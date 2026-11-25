@@ -55,12 +55,42 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
-      - uses: MobSF/mobsfscan@ec2927a8cfab6626a67f26b223be3aba52a34b70
+      - name: Test MobSF policy
+        run: python3 -B -m unittest discover -s tests -p test_mobsf_policy.py -v
+      - name: Scan all Android sources and collect unfiltered SARIF
+        id: mobsfscan
+        uses: MobSF/mobsfscan@ec2927a8cfab6626a67f26b223be3aba52a34b70
         with:
-          args: '. --sarif --output mobsfscan-results.sarif --type android'
+          args: '. --sarif --output mobsfscan-results.sarif --type android --no-fail'
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '8.13'
+      - name: Verify effective release APK SDK levels
+        run: |
+          sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$sdkmanager"
+          "$sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
+          gradle --no-daemon --console=plain :app:assembleRelease
+          apk=app/build/outputs/apk/release/app-release-unsigned.apk
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" > mobsf-apk-badging.txt
+      - name: Enforce exact source security baseline
+        env:
+          MOBSF_SCAN_OUTCOME: ${{ steps.mobsfscan.outcome }}
+        run: |
+          set -o pipefail
+          python3 tools/check_mobsf_findings.py | tee mobsf-gate-summary.txt
+          cat mobsf-gate-summary.txt >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: mobsf-sarif
-          path: mobsfscan-results.sarif
+          path: |
+            mobsfscan-results.sarif
+            mobsf-apk-badging.txt
+            mobsf-gate-summary.txt
           if-no-files-found: error
