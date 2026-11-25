@@ -34,10 +34,17 @@ jobs:
           gradle --no-daemon --console=plain :core:test :core:jacocoTestReport :app:createDebugUnitTestCoverageReport :app:assembleDebug :app:lintDebug
           python3 tools/check-coverage.py
           python3 -B -m unittest discover -s tests -v
+      - name: Verify generated analysis inputs
+        run: |
+          test -s "$GITHUB_WORKSPACE/core/build/reports/jacoco/test/jacocoTestReport.xml"
+          test -s "$GITHUB_WORKSPACE/app/build/reports/coverage/test/debug/report.xml"
+          test -s "$GITHUB_WORKSPACE/app/build/reports/lint-results-debug.xml"
       - uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
+            -Dsonar.coverage.jacoco.xmlReportPaths=${{ github.workspace }}/core/build/reports/jacoco/test/jacocoTestReport.xml,${{ github.workspace }}/app/build/reports/coverage/test/debug/report.xml
+            -Dsonar.androidLint.reportPaths=${{ github.workspace }}/app/build/reports/lint-results-debug.xml
             -Dsonar.qualitygate.wait=true
             -Dsonar.qualitygate.timeout=300
