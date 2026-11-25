@@ -1,0 +1,14 @@
+.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+client_secret*.json
+*credentials*.json
+.env
+*.apk
+*.sarif
+.DS_Store
+
+__pycache__/
+.coverage

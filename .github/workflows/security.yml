@@ -1,0 +1,66 @@
+name: Security
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  gitleaks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install and verify Gitleaks
+        run: |
+          set -eu
+          v=8.30.1
+          cd "$RUNNER_TEMP"
+          curl --proto '=https' --tlsv1.2 -fsSL -o gl.tgz "https://github.com/gitleaks/gitleaks/releases/download/v$v/gitleaks_${v}_linux_x64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL -o sums.txt "https://github.com/gitleaks/gitleaks/releases/download/v$v/gitleaks_${v}_checksums.txt"
+          grep " gitleaks_${v}_linux_x64.tar.gz$" sums.txt | sed "s/gitleaks_${v}_linux_x64.tar.gz/gl.tgz/" | sha256sum -c -
+          tar -xzf gl.tgz gitleaks
+          sudo install gitleaks /usr/local/bin/gitleaks
+      - run: gitleaks git --redact --no-banner --exit-code 1 .
+  codeql:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98
+        with:
+          languages: java-kotlin
+          build-mode: manual
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '8.13'
+      - run: |
+          sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          "$sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
+          gradle --no-daemon --console=plain --no-build-cache --rerun-tasks :app:assembleDebug
+      - uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98
+  mobsf:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: MobSF/mobsfscan@ec2927a8cfab6626a67f26b223be3aba52a34b70
+        with:
+          args: '. --sarif --output mobsfscan-results.sarif --type android'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: mobsf-sarif
+          path: mobsfscan-results.sarif
+          if-no-files-found: error

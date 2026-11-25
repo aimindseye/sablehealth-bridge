@@ -1,0 +1,43 @@
+name: Android SB-R1
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '8.13'
+      - name: SDK and build tools
+        run: |
+          sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$sdkmanager"
+          "$sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Build and measure
+        run: |
+          python3 tools/check-contract.py
+          python3 -B -m unittest discover -s tests -v
+          gradle --no-daemon --console=plain :core:test :core:jacocoTestReport :app:createDebugUnitTestCoverageReport :app:assembleDebug :app:assembleRelease :app:lintDebug :app:lintRelease detekt ktlintCheck
+          python3 tools/check-coverage.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: sbr1-reports
+          path: |
+            core/build/reports/
+            app/build/reports/
+            app/build/test-results/
+          if-no-files-found: error
