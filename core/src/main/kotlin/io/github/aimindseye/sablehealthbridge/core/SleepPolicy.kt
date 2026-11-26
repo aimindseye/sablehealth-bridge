@@ -161,8 +161,10 @@ private fun decideOwned(
 private fun explicitSourceEdit(session: SleepSession): Boolean =
     session.sourceInfo?.let { it.manuallyEdited && it.updatedAt != null } == true
 
-private fun changedBounds(session: SleepSession, previous: ExistingSleep): Boolean =
-    previous.start != session.start || previous.end != session.end
+private fun changedBounds(
+    session: SleepSession,
+    previous: ExistingSleep,
+): Boolean = previous.start != session.start || previous.end != session.end
 
 private fun decideDuplicate(
     session: SleepSession,
