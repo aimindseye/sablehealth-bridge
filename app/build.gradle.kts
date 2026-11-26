@@ -83,7 +83,7 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.16.1")
     testImplementation("androidx.work:work-testing:2.11.2")
     // Test-only security remediation for Robolectric transitive Bouncy Castle.
-    testRuntimeOnly("org.bouncycastle:bcprov-jdk18on:1.86")
+    testRuntimeOnly("org.bouncycastle:bcprov-jdk18on:1.87")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
