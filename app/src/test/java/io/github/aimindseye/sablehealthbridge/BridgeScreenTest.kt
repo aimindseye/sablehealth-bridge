@@ -103,11 +103,13 @@ class BridgeScreenTest {
         val session =
             original.copy(
                 stages = original.stages.map { it.copy(type = StageType.OUT_OF_BED) },
-                overlayInfo = OverlayInfo(1, 1, original.asleepMinutes(), 47, null),
+                overlayInfo = OverlayInfo(1, 1, original.asleepMinutes(), 47, null, 1),
             )
         compose.runOnIdle {
             screen.value = ScreenState(connected = true, preview = Preview(session, Decision(Action.INSERT)))
         }
+        val warning = "Review: 1 awakening type(s) inferred from Google collection"
+        compose.onNodeWithText(warning).assertExists()
         compose.onNodeWithText("Google summary: 47m asleep · —m awake").assertExists()
         compose.onNodeWithText("Primary stages: ${original.asleepMinutes()}m asleep · Import: 0m").assertExists()
         compose.onNodeWithTag("apply-sleep").assertIsDisplayed()
@@ -119,6 +121,7 @@ class BridgeScreenTest {
             screen.value = screen.value.copy(preview = conflictPreview)
         }
         compose.onNodeWithTag("apply-sleep").assertDoesNotExist()
+        compose.onNodeWithText(warning).assertDoesNotExist()
     }
 
     @Test

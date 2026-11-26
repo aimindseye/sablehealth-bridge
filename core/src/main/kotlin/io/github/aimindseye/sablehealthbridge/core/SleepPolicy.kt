@@ -26,6 +26,7 @@ data class OverlayInfo(
     val primaryAsleepMinutes: Long,
     val reportedAsleepMinutes: Long?,
     val reportedAwakeMinutes: Long?,
+    val unexpectedAwakeningTypes: Int = 0,
 )
 
 data class SleepSession(

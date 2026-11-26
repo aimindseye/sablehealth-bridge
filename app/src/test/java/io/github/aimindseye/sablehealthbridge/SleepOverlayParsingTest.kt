@@ -25,6 +25,7 @@ class SleepOverlayParsingTest {
         val session = parseSleep(point, now)
         val info = requireNotNull(session.overlayInfo)
         check(info.shortAwakenings == 1 && info.outOfBedSegments == 1)
+        check(info.unexpectedAwakeningTypes == 0)
         check(info.primaryAsleepMinutes == 50L && info.reportedAsleepMinutes == 47L && info.reportedAwakeMinutes == 13L)
         check(session.key == original.key && session.startOffset == original.startOffset)
         check(session.asleepMinutes() == 30L)
@@ -45,12 +46,45 @@ class SleepOverlayParsingTest {
     }
 
     @Test
+    fun awakeningCollectionDefinesMeaningEvenWithUnexpectedType() {
+        val types = listOf(null, JSONObject.NULL, "", "SLEEP_STAGE_TYPE_UNSPECIFIED", "RESTLESS", "REM", "future-type")
+        types.forEach { type ->
+            val point = fixtureSleepPoint()
+            val sleep = point.getJSONObject("sleep")
+            val item = overlay("15", "25")
+            if (type != null) item.put("type", type)
+            sleep.put("shortAwakenings", JSONArray().put(item))
+            val session = parseSleep(point, now)
+            val info = requireNotNull(session.overlayInfo)
+            check(info.shortAwakenings == 1 && info.unexpectedAwakeningTypes == 1)
+            check(session.asleepMinutes() == 40L)
+            check(session.minutes(StageType.AWAKE) == 20L)
+            check(existingRecord(toRecord(session, 0)).stages == session.stages)
+        }
+    }
+
+    @Test
+    fun mixedAwakeningTypesAreCountedAndDoNotDoubleCount() {
+        val point = fixtureSleepPoint()
+        val sleep = point.getJSONObject("sleep")
+        val entries = JSONArray()
+        entries.put(overlay("15", "25").put("type", "AWAKE"))
+        entries.put(overlay("20", "30").put("type", "RESTLESS"))
+        entries.put(overlay("20", "30"))
+        sleep.put("shortAwakenings", entries)
+        val session = parseSleep(point, now)
+        val info = requireNotNull(session.overlayInfo)
+        check(info.shortAwakenings == 3 && info.unexpectedAwakeningTypes == 2)
+        check(session.asleepMinutes() == 35L)
+        check(session.minutes(StageType.AWAKE) == 25L)
+    }
+
+    @Test
     fun malformedOverlaysFailWithoutDiscardingData() {
         val cases =
             listOf(
                 JSONObject().put("shortAwakenings", JSONObject()),
                 JSONObject().put("shortAwakenings", JSONArray().put(42)),
-                JSONObject().put("shortAwakenings", JSONArray().put(overlay("15", "25").put("type", "REM"))),
                 JSONObject().put("outOfBedSegments", JSONArray().put(JSONObject())),
                 JSONObject().put("outOfBedSegments", JSONArray().put(overlay("35", "20"))),
                 JSONObject().put("outOfBedSegments", JSONArray().put(overlay("20", "99"))),

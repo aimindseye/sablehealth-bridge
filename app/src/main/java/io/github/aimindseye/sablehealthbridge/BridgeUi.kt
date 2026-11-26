@@ -213,6 +213,12 @@ private fun OverlayDetails(
         "Primary stages: ${info.primaryAsleepMinutes}m asleep · Import: ${sleep.asleepMinutes()}m",
         style = MaterialTheme.typography.bodySmall,
     )
+    if (info.unexpectedAwakeningTypes > 0) {
+        Text(
+            "Review: ${info.unexpectedAwakeningTypes} awakening type(s) inferred from Google collection",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
     val asleep = info.reportedAsleepMinutes
     val awake = info.reportedAwakeMinutes
     if (asleep != null || awake != null) {

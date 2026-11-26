@@ -12,16 +12,21 @@ import java.time.format.DateTimeParseException
 
 private const val MAX_OVERLAY_COUNT = 20000
 
+private data class ParsedOverlays(
+    val stages: List<Stage>,
+    val unexpectedTypes: Int,
+)
+
 internal fun applySleepOverlays(
     sleep: JSONObject,
     primary: SleepSession,
 ): SleepSession {
     val awake = overlayStages(sleep, "shortAwakenings", StageType.AWAKE)
     val outOfBed = overlayStages(sleep, "outOfBedSegments", StageType.OUT_OF_BED)
-    if (awake.isEmpty() && outOfBed.isEmpty()) return primary
+    if (awake.stages.isEmpty() && outOfBed.stages.isEmpty()) return primary
     val normalized =
         try {
-            normalizeOverlays(primary, awake + outOfBed)
+            normalizeOverlays(primary, awake.stages + outOfBed.stages)
         } catch (_: IllegalArgumentException) {
             throw Hold("Invalid sleep overlay bounds or stage limit; no import")
         }
@@ -30,11 +35,12 @@ internal fun applySleepOverlays(
         stages = normalized,
         overlayInfo =
             OverlayInfo(
-                awake.size,
-                outOfBed.size,
+                awake.stages.size,
+                outOfBed.stages.size,
                 primary.asleepMinutes(),
                 summaryMinutes(summary, "minutesAsleep"),
                 summaryMinutes(summary, "minutesAwake"),
+                awake.unexpectedTypes,
             ),
     )
 }
@@ -48,13 +54,14 @@ private fun overlayStages(
     sleep: JSONObject,
     name: String,
     type: StageType,
-): List<Stage> {
-    if (!sleep.has(name)) return emptyList()
+): ParsedOverlays {
+    if (!sleep.has(name)) return ParsedOverlays(emptyList(), 0)
     val raw = checkedOverlayArray(sleep, name)
-    return (0 until raw.length()).map { index ->
-        val item = raw.optJSONObject(index) ?: throw Hold("Invalid sleep overlay entry")
-        parseOverlay(item, type)
-    }
+    val entries = (0 until raw.length()).map { raw.optJSONObject(it) ?: throw Hold("Invalid sleep overlay entry") }
+    // The collection defines the interval semantics. The child type is redundant metadata.
+    val unexpected = entries.count { type == StageType.AWAKE && it.optString("type") != "AWAKE" }
+    val stages = entries.map { parseOverlay(it, type) }
+    return ParsedOverlays(stages, unexpected)
 }
 
 private fun checkedOverlayArray(
@@ -70,9 +77,6 @@ private fun parseOverlay(
     item: JSONObject,
     type: StageType,
 ): Stage {
-    if (type == StageType.AWAKE && item.optString("type") != "AWAKE") {
-        throw Hold("Invalid short awakening type")
-    }
     try {
         return Stage(
             Instant.parse(item.optString("startTime")),
