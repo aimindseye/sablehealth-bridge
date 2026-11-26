@@ -61,7 +61,7 @@ class PolicyTests(unittest.TestCase):
             elif mode == 'snippet':
                 rows[0]['locations'][0]['physicalLocation']['region']['snippet']['text'] = 'changed'
             elif mode == 'severity':
-                rows[0]['level'] = 'error'
+                rows[0]['level'] = 'warning' if rows[0].get('level') == 'error' else 'error'
             elif mode == 'path':
                 rows[0]['locations'][0]['physicalLocation']['artifactLocation']['uri'] = 'other.kt'
             else:
