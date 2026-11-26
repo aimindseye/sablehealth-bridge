@@ -99,7 +99,7 @@ class BridgeControllerTest {
     fun staleGoogleAndNonWritablePreviewNeverWrite() {
         connect()
         controller.preview()
-        service.session = service.session.copy(key = "changed")
+        service.session = service.session.copy(key = service.session.key + "-changed")
         controller.applyPreview()
         check(controller.screen.message.contains("changed"))
         check(service.writes == 0)
@@ -153,7 +153,7 @@ class BridgeControllerTest {
     @Test
     fun chooseAnotherSessionAndRecheckSelectedKeyBeforeWrite() {
         connect()
-        val second = service.session.copy(key = "second")
+        val second = service.session.copy(key = service.session.key + "-second")
         service.extra = listOf(second)
         controller.preview()
         check(controller.screen.sessionCount == 2 && controller.screen.sessionIndex == 0)
@@ -172,7 +172,7 @@ class BridgeControllerTest {
     @Test
     fun vanishedSelectedRecordCannotWrite() {
         connect()
-        service.extra = listOf(service.session.copy(key = "second"))
+        service.extra = listOf(service.session.copy(key = service.session.key + "-second"))
         controller.preview()
         controller.selectRelative(1)
         service.extra = emptyList()

@@ -7,42 +7,9 @@
   "scope": "SOURCE_CI_RATCHET_ONLY_RELEASE_HOLD",
   "frozen": {
     "app/src/main/AndroidManifest.xml": "8e5fb1f3fc1035c9280ddc1da31e631770ec6afe362e12e2f6430414fb980bc5",
-    "app/src/test/java/io/github/aimindseye/sablehealthbridge/BridgeControllerTest.kt": "3c4cb609221403adab5cc4deae592da996546b1ccd025a2634ff77024f9c4082"
+    "app/src/test/java/io/github/aimindseye/sablehealthbridge/BridgeControllerTest.kt": "d6b7109cc1312f5b1e182ffee0ccb841cdded4512073246effa957b0c5bba04a"
   },
   "findings": [
-    {
-      "result": {
-        "message": {
-          "text": "Files may contain hardcoded sensitive information like usernames, passwords, keys etc."
-        },
-        "locations": [
-          {
-            "physicalLocation": {
-              "region": {
-                "snippet": {
-                  "text": "key = \"changed\""
-                },
-                "endColumn": 4112,
-                "endLine": 102,
-                "startColumn": 4097,
-                "startLine": 102
-              },
-              "artifactLocation": {
-                "uri": "app/src/test/java/io/github/aimindseye/sablehealthbridge/BridgeControllerTest.kt"
-              }
-            }
-          }
-        ],
-        "properties": {
-          "owasp-mobile": "M9: Reverse Engineering",
-          "masvs": "MSTG-STORAGE-14",
-          "cwe": "CWE-798: Use of Hard-coded Credentials",
-          "reference": "https://github.com/MobSF/owasp-mstg/blob/master/Document/0x05d-Testing-Data-Storage.md#storing-a-key---example"
-        },
-        "ruleId": "android_kotlin_hardcoded"
-      },
-      "review": "Synthetic stale-preview test identifier, not a credential; exact source pinned."
-    },
     {
       "result": {
         "message": {
@@ -281,5 +248,16 @@
       },
       "review": "Standard platform HTTPS trust retained; architecture review."
     }
-  ]
+  ],
+  "r113_review": {
+    "reviewed_candidate": "7384cf1d737cc345ffb06e7d3bba24708409b0e1",
+    "reviewed_artifact": 15149455056,
+    "reviewed_artifact_sha256": "375c4ec82c89b30c2c7e5b1f8e6479866c3df75a6e02980f1c1d69a8f2dc5ce4",
+    "original_artifact": 15115978884,
+    "original_findings": 8,
+    "reviewed_findings": 10,
+    "added_test_fixture_findings": 2,
+    "expected_findings_after_correction": 7,
+    "review": "Retire the original synthetic key exception and resolve both new synthetic test key findings by deriving test identities. The manifest pin and all seven other finding fingerprints remain unchanged; no new exception or rule suppression. Fresh exact scan required."
+  }
 }

@@ -33,7 +33,8 @@ class SleepTransportTest {
         check(connection.disconnected && connection.streamClosed)
         val refused = FixtureConnection(403, byteArrayOf())
         val error = runCatching { fetchIdentity("fixture-token") { refused } }.exceptionOrNull()
-        check(error is Hold && error.label == "API HTTP 403")
+        check(error is Hold && error.label == "API HTTP 403: check Google account access")
+        check(!error.retryable)
         check(refused.disconnected && !refused.streamOpened)
     }
 
