@@ -10,6 +10,7 @@ import java.time.format.DateTimeParseException
 
 private const val HISTORY_LOOKBACK = 13L
 private const val PROBE_LOOKBACK = 2L
+private const val SYNC_LOOKBACK = 6L
 
 internal data class SleepBatch(
     val sessions: List<SleepSession>,
@@ -42,6 +43,13 @@ internal fun readSleepBatch(
     zone: ZoneId,
     fetch: (String) -> JSONObject,
 ): SleepBatch = readSleepWindow(now, zone, HISTORY_LOOKBACK, fetch)
+
+internal fun readSyncBatch(
+    now: Instant,
+    zone: ZoneId,
+    initial: Boolean,
+    fetch: (String) -> JSONObject,
+): SleepBatch = readSleepWindow(now, zone, if (initial) HISTORY_LOOKBACK else SYNC_LOOKBACK, fetch)
 
 private fun readSleepWindow(
     now: Instant,

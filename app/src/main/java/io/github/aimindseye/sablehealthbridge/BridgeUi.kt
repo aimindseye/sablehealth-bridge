@@ -56,6 +56,7 @@ internal data class ScreenActions(
     val about: () -> Unit,
     val previous: () -> Unit = {},
     val next: () -> Unit = {},
+    val sync: (() -> Unit)? = null,
 )
 
 @Composable
@@ -70,6 +71,7 @@ internal fun BridgeScreen(
                     Text("Sable Health Bridge", style = MaterialTheme.typography.titleMedium)
                     Text("Sleep only · SB-R1", style = MaterialTheme.typography.labelSmall)
                 }
+                actions.sync?.let { back -> TextButton(onClick = back) { Text("Sync") } }
                 TextButton(onClick = actions.about, modifier = Modifier.heightIn(min = 48.dp)) { Text("About") }
             }
             Column(
@@ -83,7 +85,10 @@ internal fun BridgeScreen(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 SessionControls(state, actions)
-                state.preview?.let { SleepCard(it) }
+                state.preview?.let {
+                    Text(actionLabel(it.decision.action), style = MaterialTheme.typography.labelMedium)
+                    SleepCard(it)
+                }
                 SchemaDiagnostics(state.diagnostics)
             }
             val item = state.preview
@@ -208,13 +213,13 @@ internal fun PrivacyScreen(back: () -> Unit) {
                     "The Bridge does not store tokens or sleep records in app files. No analytics or separate backend.",
             )
             Text(
-                "Sleep read access detects overlaps. Sleep write access imports the explicitly reviewed record. " +
-                    "Only the Bridge's own matching copy can be removed; other apps' records are never altered.",
+                "Sleep read access detects overlaps. Manual import requires review. Automatic sync is opt-in and " +
+                    "inserts only new completed sleep. Other apps' records are never altered.",
             )
             Text(
-                "Google Health may export a duplicate later. Preview again to detect it. Clear session removes " +
-                    "the app's in-memory access token, not the Google account grant. " +
-                    "Revoke access in Google account settings.",
+                "Automatic sync retains a salted account binding, opaque import identities, and aggregate status " +
+                    "locally. No tokens or raw sleep records are persisted. Stop sync to prevent new automatic writes. " +
+                    "An already submitted write may complete. Revoke access in Google account settings.",
             )
             TextButton(onClick = back, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         }

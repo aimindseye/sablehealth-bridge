@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,9 +33,9 @@ class StartupTest {
 
     private fun verifyAndCapture(theme: String) {
         compose.onNodeWithText("Sable Health Bridge").assertIsDisplayed()
-        compose.onNodeWithTag("google-connect").assertIsDisplayed()
-        compose.onNodeWithTag("health-connect").assertIsDisplayed()
-        compose.onNodeWithTag("preview-sleep").assertIsNotEnabled()
+        compose.onNodeWithTag("sync-toggle").assertIsDisplayed()
+        compose.onNodeWithTag("sync-now").assertIsNotEnabled()
+        compose.onNodeWithTag("sync-manual").assertIsDisplayed()
         val image =
             compose.runOnIdle {
                 val view = compose.activity.window.decorView
@@ -47,5 +48,9 @@ class StartupTest {
         File(directory, "$theme-launcher.png").outputStream().use {
             check(image.compress(Bitmap.CompressFormat.PNG, 100, it))
         }
+        compose.onNodeWithTag("sync-manual").performClick()
+        compose.onNodeWithTag("google-connect").assertIsDisplayed()
+        compose.onNodeWithTag("health-connect").assertIsDisplayed()
+        compose.onNodeWithTag("preview-sleep").assertIsNotEnabled()
     }
 }

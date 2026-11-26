@@ -16,6 +16,8 @@ import io.github.aimindseye.sablehealthbridge.core.Stage
 import io.github.aimindseye.sablehealthbridge.core.StageType
 import io.github.aimindseye.sablehealthbridge.core.confirmedDecision
 import io.github.aimindseye.sablehealthbridge.core.decide
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 import java.time.Instant
 
@@ -27,6 +29,7 @@ internal val SLEEP_PERMISSIONS =
 
 private const val HISTORY_DAYS = 7L
 private const val MAX_HEALTH_PAGES = 30
+private val sleepWriteLock = Mutex()
 
 internal data class SleepPage(
     val records: List<ExistingSleep>,
@@ -71,7 +74,7 @@ internal class ConnectSleep(
     suspend fun apply(
         session: SleepSession,
         preview: Decision,
-    ): String {
+    ): String = sleepWriteLock.withLock {
         requireAccess()
         val fresh = decide(session, existing(store, session))
         if (!confirmedDecision(preview, fresh)) throw Hold("Health Connect changed; preview again")
@@ -83,11 +86,28 @@ internal class ConnectSleep(
         }
         // No blind retries: an interrupted IPC may already have committed.
         val verified = inspect(session).action
-        return when (verified) {
+        when (verified) {
             Action.ALREADY_IMPORTED -> "Imported and verified"
             Action.EXTERNAL_MATCH -> "External sleep verified; Bridge copy absent"
             else -> "Change submitted; review Health Connect before retrying"
         }
+    }
+    /** A separate insert-only boundary. Never calls the manual update/delete path. */
+    suspend fun insertAutomatically(
+        session: SleepSession,
+        preview: Decision,
+        reserve: suspend () -> Unit,
+    ): Boolean = sleepWriteLock.withLock {
+        requireAccess()
+        val fresh = decide(session, existing(store, session))
+        if (fresh.action != Action.INSERT || !confirmedDecision(preview, fresh)) {
+            throw Hold("Health Connect changed; no automatic import")
+        }
+        requireAccess()
+        reserve()
+        requireAccess()
+        store.insert(toRecord(session, fresh.version))
+        inspect(session).action == Action.ALREADY_IMPORTED
     }
 }
 

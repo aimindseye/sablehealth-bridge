@@ -3,10 +3,15 @@ package io.github.aimindseye.sablehealthbridge
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
@@ -39,6 +44,7 @@ internal data class ScreenState(
 )
 
 class MainActivity : ComponentActivity() {
+    private val sync = SyncCoordinator(this)
     private val health by lazy { ConnectSleep(this) }
     private val auth by lazy { Identity.getAuthorizationClient(this) }
     private val controller: BridgeController by lazy { BridgeController(lifecycleScope, services) }
@@ -85,22 +91,54 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            var manual by rememberSaveable { mutableStateOf(false) }
+            BackHandler(enabled = manual) { manual = false }
             BridgeTheme {
-                BridgeScreen(
-                    controller.screen,
-                    ScreenActions(
-                        controller::authorize,
-                        controller::requestHealth,
-                        controller::preview,
-                        controller::applyPreview,
-                        { controller.forget() },
-                        about = { startActivity(Intent(this, PrivacyActivity::class.java)) },
-                        previous = { controller.selectRelative(-1) },
-                        next = { controller.selectRelative(1) },
-                    ),
-                )
+                if (manual) {
+                    BridgeScreen(
+                        controller.screen,
+                        ScreenActions(
+                            controller::authorize,
+                            controller::requestHealth,
+                            controller::preview,
+                            controller::applyPreview,
+                            { controller.forget() },
+                            about = { startActivity(Intent(this, PrivacyActivity::class.java)) },
+                            previous = { controller.selectRelative(-1) },
+                            next = { controller.selectRelative(1) },
+                            sync = { manual = false },
+                        ),
+                    )
+                } else {
+                    SyncScreen(
+                        sync.state,
+                        SyncActions(
+                            sync::enable,
+                            sync::disable,
+                            { sync.syncNow() },
+                            sync::chooseInterval,
+                            { manual = true },
+                            { startActivity(Intent(this, PrivacyActivity::class.java)) },
+                        ),
+                    )
+                }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        sync.observe()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        sync.syncNow(restore = true)
+    }
+
+    override fun onStop() {
+        sync.unobserve()
+        super.onStop()
     }
 
     private fun launchAuthorization() {

@@ -32,4 +32,17 @@ for name in ('BackgroundProbeWorker.kt', 'BackgroundProbeActivity.kt', 'AndroidP
     assert '.apply(' not in text and 'insertRecords(' not in text and 'deleteRecords(' not in text
 assert 'hasResolution()' in probe and 'pendingIntent' not in probe
 assert 'setInitialDelay(' in (source / 'BackgroundProbeActivity.kt').read_text()
+auto = (source / 'AutomaticSyncWorker.kt').read_text()
+engine = (source / 'AutomaticSyncEngine.kt').read_text()
+scheduler = (source / 'SyncScheduler.kt').read_text()
+journal = (source / 'SyncJournal.kt').read_text()
+assert 'insertAutomatically(session, decision)' in auto
+assert 'ledger.reserve(session)' in auto and 'guard(consent)' in auto
+assert 'silentAccess(ports.authorize())' in engine and 'consent.binding' in engine
+assert 'enqueueUniquePeriodicWork' in scheduler and 'enqueueUniqueWork' in scheduler
+assert 'SYNC_GENERATION to consent.generation' in scheduler
+assert 'UNRESOLVED_ATTEMPT' in journal and 'editor.commit()' in journal
+for text in (auto, engine, scheduler):
+    assert 'deleteRecords(' not in text and 'pendingIntent' not in text
+assert 'fresh.action != Action.INSERT' in writer
 print('RESULT=PASS_SBR2A_SOURCE_CONTRACT')
