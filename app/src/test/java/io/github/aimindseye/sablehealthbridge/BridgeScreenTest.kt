@@ -112,14 +112,11 @@ class BridgeScreenTest {
         compose.onNodeWithText("Primary stages: ${original.asleepMinutes()}m asleep · Import: 0m").assertExists()
         compose.onNodeWithTag("apply-sleep").assertIsDisplayed()
         capture("overlays")
+        val withoutSummary = OverlayInfo(1, 1, original.asleepMinutes(), null, null)
+        val conflictSession = session.copy(overlayInfo = withoutSummary)
+        val conflictPreview = Preview(conflictSession, Decision(Action.CONFLICT))
         compose.runOnIdle {
-            screen.value = screen.value.copy(
-                preview =
-                    Preview(
-                        session.copy(overlayInfo = OverlayInfo(1, 1, original.asleepMinutes(), null, null)),
-                        Decision(Action.CONFLICT),
-                    ),
-            )
+            screen.value = screen.value.copy(preview = conflictPreview)
         }
         compose.onNodeWithTag("apply-sleep").assertDoesNotExist()
     }
