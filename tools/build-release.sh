@@ -5,8 +5,8 @@ cd "$(dirname "$0")/.."
 [[ $# == 2 && -t 0 && -f "$1" && -n "$2" ]] || { echo 'Usage: tools/build-release.sh KEYSTORE ALIAS (interactive)'; exit 2; }
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || { echo HOLD_DIRTY_CHECKOUT; exit 2; }
 commit="$(git rev-parse HEAD)"
-version=0.2.0-sbr2a
-code=2
+version=0.2.1-sbr2a
+code=3
 out="$HOME/Downloads/sablehealth-bridge-release/$version/$commit"
 [[ ! -e "$out" && ! -L "$out" ]] || { echo HOLD_OUTPUT_EXISTS; exit 2; }
 sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
@@ -38,5 +38,5 @@ mkdir -m 700 "$out"
 cp "$signed" "$out/"
 (cd "$out" && shasum -a 256 "$(basename "$signed")" > SHA256SUMS.txt)
 printf '%s\n' "$commit" > "$out/SOURCE_COMMIT.txt"
-echo RESULT=PASS_SBR1_SIGNED_RELEASE
+echo RESULT=PASS_SBR2A_SIGNED_RELEASE
 echo "APK=$out/$(basename "$signed")"
