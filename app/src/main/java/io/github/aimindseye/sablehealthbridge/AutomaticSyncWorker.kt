@@ -35,9 +35,13 @@ class AutomaticSyncWorker(
                 val settings = SyncSettings(prefs)
                 val generation = inputData.getString(SYNC_GENERATION)
                 val report =
-                    executeSyncWork(settings, generation) { consent ->
-                        AndroidAutomaticSyncPorts(applicationContext, settings, SyncJournal(prefs), consent)
-                    }
+                    executeSyncWork(
+                        settings,
+                        generation,
+                        ports = { consent ->
+                            AndroidAutomaticSyncPorts(applicationContext, settings, SyncJournal(prefs), consent)
+                        },
+                    )
                 if (report.status in setOf(SyncStatus.FAILED, SyncStatus.WRITE_UNCERTAIN)) {
                     Result.failure()
                 } else {
@@ -88,10 +92,15 @@ private class AndroidAutomaticSyncPorts(
         return ProbeAuthorization(result.hasResolution(), result.grantedScopes.orEmpty(), result.accessToken)
     }
 
-    override suspend fun identity(access: String, salt: String): String =
-        retrySleepRead { readAccountBinding(access, salt) }
+    override suspend fun identity(
+        access: String,
+        salt: String,
+    ): String = retrySleepRead { readAccountBinding(access, salt) }
 
-    override suspend fun batch(access: String, initial: Boolean): SleepBatch =
+    override suspend fun batch(
+        access: String,
+        initial: Boolean,
+    ): SleepBatch =
         retrySleepRead {
             readSyncBatch(Instant.now(), ZoneId.systemDefault(), initial) { url -> fetchPage(url, access) }
         }
@@ -102,7 +111,10 @@ private class AndroidAutomaticSyncPorts(
 
     override fun confirm(session: SleepSession) = ledger.confirm(session)
 
-    override suspend fun insert(session: SleepSession, decision: Decision): Boolean =
+    override suspend fun insert(
+        session: SleepSession,
+        decision: Decision,
+    ): Boolean =
         try {
             health.insertAutomatically(session, decision) {
                 guard(consent)

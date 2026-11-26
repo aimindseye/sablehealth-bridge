@@ -19,3 +19,7 @@ Use Q25 on the existing same Google account. Confirm existing manual preview and
 ## Author environment limitation
 
 Standalone JVM policy/engine tests may be run with a minimal test seam; they do not substitute for Android SDK, WorkManager, Robolectric, ktlint or JaCoCo qualification. The author environment has no Android SDK/Gradle dependency access. The production CI run is the authoritative Android quality evidence. No owner test package is issued while checks or actual differential coverage remain outstanding.
+
+## First production CI correction
+
+Build run 45905560437, job 140201318852, report artifact 15157159434 (SHA-256 d1a03bd0120fcbc2720563d31e4171566d29f2e6cad7f1d923cc00b21a2ad34a). Compiler: explicitly supply the ports lambda rather than binding it to the Instant parameter. Detekt: split the complex settings condition and separate SyncActions from SyncScreen. All six formatter output blob prefixes matched the actual CI ktlintFormat patch before semantic corrections. Actual core AutomaticSleepPolicy JaCoCo: 25/25 lines, 30/30 branches. Application coverage unavailable because compilation failed. No policy, suppression, dependency or permission changes. Fresh exact-head CI required.

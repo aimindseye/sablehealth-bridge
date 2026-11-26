@@ -17,8 +17,17 @@ internal data class SyncConsent(
 )
 
 internal enum class SyncStatus {
-    OFF, READY, RUNNING, COMPLETE, PAUSED, AUTH_REQUIRED, ACCOUNT_CHANGED,
-    PERMISSION_REQUIRED, UNAVAILABLE, FAILED, WRITE_UNCERTAIN,
+    OFF,
+    READY,
+    RUNNING,
+    COMPLETE,
+    PAUSED,
+    AUTH_REQUIRED,
+    ACCOUNT_CHANGED,
+    PERMISSION_REQUIRED,
+    UNAVAILABLE,
+    FAILED,
+    WRITE_UNCERTAIN,
 }
 
 internal data class SyncReport(
@@ -29,16 +38,24 @@ internal data class SyncReport(
     val finishedAt: Long = 0,
 )
 
-internal class SyncHalt(val status: SyncStatus) : Exception()
+internal class SyncHalt(
+    val status: SyncStatus,
+) : Exception()
 
 internal interface AutomaticSyncPorts {
     suspend fun guard(consent: SyncConsent)
 
     suspend fun authorize(): ProbeAuthorization
 
-    suspend fun identity(access: String, salt: String): String
+    suspend fun identity(
+        access: String,
+        salt: String,
+    ): String
 
-    suspend fun batch(access: String, initial: Boolean): SleepBatch
+    suspend fun batch(
+        access: String,
+        initial: Boolean,
+    ): SleepBatch
 
     suspend fun inspect(session: SleepSession): Decision
 
@@ -46,7 +63,10 @@ internal interface AutomaticSyncPorts {
 
     fun confirm(session: SleepSession)
 
-    suspend fun insert(session: SleepSession, decision: Decision): Boolean
+    suspend fun insert(
+        session: SleepSession,
+        decision: Decision,
+    ): Boolean
 }
 
 internal suspend fun runAutomaticSync(

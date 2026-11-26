@@ -18,7 +18,10 @@ internal const val SYNC_NOW_WORK = "sbr-auto-sync-now"
 private const val SCHEDULER_TIMEOUT = 30L
 
 internal interface SyncScheduler {
-    suspend fun schedule(consent: SyncConsent, replace: Boolean)
+    suspend fun schedule(
+        consent: SyncConsent,
+        replace: Boolean,
+    )
 
     suspend fun now(consent: SyncConsent)
 

@@ -76,41 +76,44 @@ internal class ConnectSleep(
     suspend fun apply(
         session: SleepSession,
         preview: Decision,
-    ): String = sleepWriteLock.withLock {
-        requireAccess()
-        val fresh = decide(session, existing(store, session))
-        if (!confirmedDecision(preview, fresh)) throw Hold("Health Connect changed; preview again")
-        requireAccess()
-        when (fresh.action) {
-            Action.INSERT, Action.UPDATE -> store.insert(toRecord(session, fresh.version))
-            Action.REMOVE_OWN_DUPLICATE -> store.delete(requireNotNull(fresh.ownId))
-            else -> throw Hold("No eligible change")
+    ): String =
+        sleepWriteLock.withLock {
+            requireAccess()
+            val fresh = decide(session, existing(store, session))
+            if (!confirmedDecision(preview, fresh)) throw Hold("Health Connect changed; preview again")
+            requireAccess()
+            when (fresh.action) {
+                Action.INSERT, Action.UPDATE -> store.insert(toRecord(session, fresh.version))
+                Action.REMOVE_OWN_DUPLICATE -> store.delete(requireNotNull(fresh.ownId))
+                else -> throw Hold("No eligible change")
+            }
+            // No blind retries: an interrupted IPC may already have committed.
+            val verified = inspect(session).action
+            when (verified) {
+                Action.ALREADY_IMPORTED -> "Imported and verified"
+                Action.EXTERNAL_MATCH -> "External sleep verified; Bridge copy absent"
+                else -> "Change submitted; review Health Connect before retrying"
+            }
         }
-        // No blind retries: an interrupted IPC may already have committed.
-        val verified = inspect(session).action
-        when (verified) {
-            Action.ALREADY_IMPORTED -> "Imported and verified"
-            Action.EXTERNAL_MATCH -> "External sleep verified; Bridge copy absent"
-            else -> "Change submitted; review Health Connect before retrying"
-        }
-    }
+
     /** A separate insert-only boundary. Never calls the manual update/delete path. */
     suspend fun insertAutomatically(
         session: SleepSession,
         preview: Decision,
         reserve: suspend () -> Unit,
-    ): Boolean = sleepWriteLock.withLock {
-        requireAccess()
-        val fresh = decide(session, existing(store, session))
-        if (fresh.action != Action.INSERT || !confirmedDecision(preview, fresh)) {
-            throw Hold("Health Connect changed; no automatic import")
+    ): Boolean =
+        sleepWriteLock.withLock {
+            requireAccess()
+            val fresh = decide(session, existing(store, session))
+            if (fresh.action != Action.INSERT || !confirmedDecision(preview, fresh)) {
+                throw Hold("Health Connect changed; no automatic import")
+            }
+            requireAccess()
+            reserve()
+            currentCoroutineContext().ensureActive()
+            store.insert(toRecord(session, fresh.version))
+            inspect(session).action == Action.ALREADY_IMPORTED
         }
-        requireAccess()
-        reserve()
-        currentCoroutineContext().ensureActive()
-        store.insert(toRecord(session, fresh.version))
-        inspect(session).action == Action.ALREADY_IMPORTED
-    }
 }
 
 private const val HEALTH_PAGE_SIZE = 100

@@ -27,15 +27,6 @@ import androidx.compose.ui.unit.dp
 import java.text.DateFormat
 import java.util.Date
 
-internal data class SyncActions(
-    val enable: () -> Unit,
-    val disable: () -> Unit,
-    val now: () -> Unit,
-    val interval: (Int) -> Unit,
-    val manual: () -> Unit,
-    val about: () -> Unit,
-)
-
 @Composable
 internal fun SyncScreen(
     state: SyncUiState,

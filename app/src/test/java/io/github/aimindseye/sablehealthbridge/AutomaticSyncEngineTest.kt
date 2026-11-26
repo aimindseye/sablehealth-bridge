@@ -144,9 +144,15 @@ internal class FixtureSyncPorts : AutomaticSyncPorts {
 
     override suspend fun authorize(): ProbeAuthorization = grant
 
-    override suspend fun identity(access: String, salt: String): String = binding
+    override suspend fun identity(
+        access: String,
+        salt: String,
+    ): String = binding
 
-    override suspend fun batch(access: String, initial: Boolean): SleepBatch {
+    override suspend fun batch(
+        access: String,
+        initial: Boolean,
+    ): SleepBatch {
         reads++
         this.initial = initial
         return SleepBatch(listOf(syncFixture()), 2)
@@ -160,7 +166,10 @@ internal class FixtureSyncPorts : AutomaticSyncPorts {
         confirmed = SyncJournalState.PREVIOUSLY_CONFIRMED
     }
 
-    override suspend fun insert(session: SleepSession, decision: Decision): Boolean {
+    override suspend fun insert(
+        session: SleepSession,
+        decision: Decision,
+    ): Boolean {
         calls++
         confirmed = SyncJournalState.UNRESOLVED_ATTEMPT
         return verify

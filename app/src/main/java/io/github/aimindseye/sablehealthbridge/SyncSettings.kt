@@ -11,8 +11,7 @@ private const val MAX_SYNC_MINUTES = 60
 internal val syncIntervals = listOf(MIN_SYNC_MINUTES, DEFAULT_SYNC_MINUTES, MAX_SYNC_MINUTES)
 private val settingsLock = Any()
 
-internal fun syncPreferences(context: Context): SharedPreferences =
-    context.getSharedPreferences(SYNC_PREFERENCES, Context.MODE_PRIVATE)
+internal fun syncPreferences(context: Context): SharedPreferences = context.getSharedPreferences(SYNC_PREFERENCES, Context.MODE_PRIVATE)
 
 /** Private, non-backed-up configuration and aggregate status. No tokens or raw records. */
 internal class SyncSettings(
@@ -24,13 +23,18 @@ internal class SyncSettings(
             val salt = prefs.getString("salt", null)
             val binding = prefs.getString("binding", null)
             val minutes = prefs.getInt("minutes", DEFAULT_SYNC_MINUTES)
-            if (
-                generation.isNullOrBlank() || salt.isNullOrBlank() || binding.isNullOrBlank() ||
-                minutes !in syncIntervals
-            ) {
+            val validInterval = minutes in syncIntervals
+            val validIdentity = !salt.isNullOrBlank() && !binding.isNullOrBlank()
+            if (generation.isNullOrBlank() || !validIdentity || !validInterval) {
                 null
             } else {
-                SyncConsent(generation, salt, binding, minutes, !prefs.getBoolean("initial_complete", false))
+                SyncConsent(
+                    generation,
+                    requireNotNull(salt),
+                    requireNotNull(binding),
+                    minutes,
+                    !prefs.getBoolean("initial_complete", false),
+                )
             }
         }
 
