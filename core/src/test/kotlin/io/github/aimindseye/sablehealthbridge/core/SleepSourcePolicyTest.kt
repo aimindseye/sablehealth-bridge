@@ -55,19 +55,22 @@ class SleepSourcePolicyTest {
         val info = OverlayInfo(1, 1, session.asleepMinutes(), summary.minutesAsleep, summary.minutesAwake, 1, 1)
         val preview = imported.copy(overlayInfo = info)
         check(preview.asleepMinutes() == 59L && preview.minutes(StageType.OUT_OF_BED) == 1L)
-        check(preview.sourceInfo?.primaryStages == listOf(stage))
-        check(preview.sourceInfo?.shortAwakenings == listOf(awake))
-        check(preview.sourceInfo?.outOfBedSegments == listOf(out))
-        check(preview.overlayInfo?.shortAwakeningMinutes == 1L)
-        check(preview.overlayInfo?.unexpectedAwakeningTypes == 1)
+        val retainedSource = requireNotNull(preview.sourceInfo)
+        check(retainedSource.primaryStages == listOf(stage))
+        check(retainedSource.shortAwakenings == listOf(awake))
+        check(retainedSource.outOfBedSegments == listOf(out))
+        val retainedOverlay = requireNotNull(preview.overlayInfo)
+        check(retainedOverlay.shortAwakeningMinutes == 1L)
+        check(retainedOverlay.unexpectedAwakeningTypes == 1)
     }
 
     @Test
     fun unknownAndAwakeInBedAreNotCountedAsSleep() {
         val types = StageType.entries
-        val stages = types.mapIndexed { index, type ->
-            Stage(start.plusSeconds(index * 60L), start.plusSeconds((index + 1) * 60L), type)
-        }
+        val stages =
+            types.mapIndexed { index, type ->
+                Stage(start.plusSeconds(index * 60L), start.plusSeconds((index + 1) * 60L), type)
+            }
         val mixed = session.copy(stages = stages)
         check(validSession(mixed, end))
         check(mixed.asleepMinutes() == 4L)
