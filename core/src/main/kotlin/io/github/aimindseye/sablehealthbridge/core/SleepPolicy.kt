@@ -39,8 +39,9 @@ data class SleepSession(
 ) {
     fun minutes(type: StageType): Long = totalMinutes(stages.filter { it.type == type })
 
-    fun asleepMinutes(): Long =
-        totalMinutes(stages.filter { it.type != StageType.AWAKE && it.type != StageType.OUT_OF_BED })
+    fun asleepMinutes(): Long = totalMinutes(
+        stages.filter { it.type != StageType.AWAKE && it.type != StageType.OUT_OF_BED },
+    )
 }
 
 private fun totalMinutes(stages: List<Stage>): Long =

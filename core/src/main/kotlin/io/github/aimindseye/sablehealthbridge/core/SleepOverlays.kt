@@ -36,11 +36,9 @@ private data class OverlayDelta(
     val awake: Int = 0,
     val outOfBed: Int = 0,
 ) {
-    operator fun plus(other: OverlayDelta): OverlayDelta =
-        OverlayDelta(awake + other.awake, outOfBed + other.outOfBed)
+    operator fun plus(other: OverlayDelta): OverlayDelta = OverlayDelta(awake + other.awake, outOfBed + other.outOfBed)
 
-    operator fun minus(other: OverlayDelta): OverlayDelta =
-        OverlayDelta(awake - other.awake, outOfBed - other.outOfBed)
+    operator fun minus(other: OverlayDelta): OverlayDelta = OverlayDelta(awake - other.awake, outOfBed - other.outOfBed)
 
     fun effective(primary: StageType): StageType =
         when {
