@@ -20,18 +20,30 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
-          gradle-version: '8.13'
+          gradle-version: '9.3.1'
       - name: SDK and build tools
         run: |
           sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
           test -n "$sdkmanager"
-          "$sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
+          "$sdkmanager" 'platforms;android-37' 'build-tools;36.0.0'
       - name: Build and measure
         run: |
           python3 tools/check-contract.py
           python3 -B -m unittest discover -s tests -v
           gradle --no-daemon --console=plain :core:test :core:jacocoTestReport :app:createDebugUnitTestCoverageReport :app:assembleDebug :app:assembleRelease :app:lintDebug :app:lintRelease detekt ktlintCheck
           python3 tools/check-coverage.py
+      - name: Collect resolved dependencies and unsigned APK manifest evidence
+        run: |
+          mkdir -p build/r11-evidence
+          gradle --no-daemon --console=plain :app:dependencies --configuration releaseRuntimeClasspath > build/r11-evidence/release-dependencies.txt
+          gradle --no-daemon --console=plain :app:dependencies --configuration debugUnitTestRuntimeClasspath > build/r11-evidence/test-dependencies.txt
+          apk=app/build/outputs/apk/release/app-release-unsigned.apk
+          aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$aapt" dump badging "$apk" > build/r11-evidence/apk-badging.txt
+          "$aapt" dump permissions "$apk" > build/r11-evidence/apk-permissions.txt
+          "$aapt" dump xmltree "$apk" AndroidManifest.xml > build/r11-evidence/apk-manifest.txt
+          sha256sum "$apk" > build/r11-evidence/APK_SHA256.txt
+          git rev-parse HEAD > build/r11-evidence/SOURCE_COMMIT.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -40,4 +52,5 @@ jobs:
             core/build/reports/
             app/build/reports/
             app/build/test-results/
+            build/r11-evidence/
           if-no-files-found: error

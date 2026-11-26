@@ -3,7 +3,6 @@ import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 plugins {
     jacoco
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 val sourceRevision =
@@ -15,7 +14,7 @@ val sourceRevision =
         .map { it.trim().takeIf { s -> s.matches(Regex("[a-f0-9]{12}")) } ?: "uncommitted" }
 android {
     namespace = "io.github.aimindseye.sablehealthbridge"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "io.github.aimindseye.sablehealthbridge"
         minSdk = 30
@@ -32,7 +31,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
     buildTypes {
         debug { enableUnitTestCoverage = true }
         release {
