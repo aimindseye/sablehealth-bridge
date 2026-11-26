@@ -109,7 +109,10 @@ private class AndroidProbePorts(
     ): String = readAccountBinding(access, salt)
 
     override suspend fun inspect(access: String) {
-        val session = readLatest(Instant.now(), ZoneId.systemDefault()) { url -> fetchPage(url, access) }
+        val session =
+            retrySleepRead {
+                readLatest(Instant.now(), ZoneId.systemDefault()) { url -> fetchPage(url, access) }
+            }
         ConnectSleep(applicationContext).inspect(session)
     }
 }

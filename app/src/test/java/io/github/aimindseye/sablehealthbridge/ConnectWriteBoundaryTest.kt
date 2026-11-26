@@ -39,7 +39,7 @@ class ConnectWriteBoundaryTest {
         }
 
     @Test
-    fun unmatchedStagesInProviderAreNotRepresentedAsDetailedSleep() {
+    fun unspecifiedSleepingInProviderIsPreservedWithoutInventingDetail() {
         val record = toRecord(session, 0)
         val stageType = SleepSessionRecord.STAGE_TYPE_SLEEPING
         val unsupported =
@@ -51,7 +51,7 @@ class ConnectWriteBoundaryTest {
                 metadata = record.metadata,
                 stages = listOf(SleepSessionRecord.Stage(record.startTime, record.endTime, stageType)),
             )
-        check(existingRecord(unsupported).stages == null)
+        check(existingRecord(unsupported).stages?.single()?.type?.name == "ASLEEP")
     }
 
     @Test

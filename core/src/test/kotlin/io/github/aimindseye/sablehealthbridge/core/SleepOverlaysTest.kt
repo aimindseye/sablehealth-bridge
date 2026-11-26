@@ -64,7 +64,7 @@ class SleepOverlaysTest {
         invalid.forEach {
             check(runCatching { normalizeOverlays(base, listOf(it)) }.exceptionOrNull() is IllegalArgumentException)
         }
-        val invalidBase = base.copy(stages = emptyList())
+        val invalidBase = base.copy(end = start)
         check(runCatching { normalizeOverlays(invalidBase, emptyList()) }.exceptionOrNull() is IllegalArgumentException)
     }
 
@@ -87,6 +87,14 @@ class SleepOverlaysTest {
                     ),
             )
         check(minutes.asleepMinutes() == 1L && minutes.minutes(StageType.OUT_OF_BED) == 1L)
+    }
+
+    @Test
+    fun overlaysInGapsAndSessionOnlyDoNotInventStages() {
+        val sparse = base.copy(stages = listOf(stage(0, 10, StageType.LIGHT)))
+        val overlay = listOf(stage(20, 40, StageType.OUT_OF_BED))
+        check(normalizeOverlays(sparse, overlay) == sparse.stages + overlay)
+        check(normalizeOverlays(base.copy(stages = emptyList()), overlay) == overlay)
     }
 
     @Test

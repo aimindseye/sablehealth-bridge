@@ -27,7 +27,8 @@ class SleepImportBoundaryTest {
     @Test
     fun newestMainSleepSelectedAcrossDifferentWakeDates() {
         val main = fixtureSleepPoint()
-        val old = fixtureSleepPoint()
+        val old = fixtureSleepPoint().put("dataPointName", "fixture/old")
+        old.getJSONObject("sleep").remove("stages")
         val interval = old.getJSONObject("sleep").getJSONObject("interval")
         interval.put("startTime", "2024-12-31T23:00:00Z")
         interval.put("endTime", "2025-01-01T00:00:00Z")
@@ -54,27 +55,25 @@ class SleepImportBoundaryTest {
     }
 
     @Test
-    fun unfinalizedOrClassicSleepIsRefused() {
+    fun unfinishedSleepIsDeferredAndClassicIsAccepted() {
         val pending = fixtureSleepPoint()
-        pending.getJSONObject("sleep").getJSONObject("metadata").put("stagesStatus", "PENDING")
+        pending.getJSONObject("sleep").getJSONObject("metadata").put("processed", false)
+        val failure = runCatching { parseSleep(pending, now) }.exceptionOrNull()
+        check(failure is Hold && failure.label == "Sleep is still processing")
         val classic = fixtureSleepPoint()
         classic.getJSONObject("sleep").put("type", "CLASSIC")
-        for (point in listOf(pending, classic)) {
-            val failure = runCatching { parseSleep(point, now) }.exceptionOrNull()
-            check(failure is Hold && failure.label == "Sleep is not finalized with detailed stages")
-        }
+        check(parseSleep(classic, now).sourceInfo?.type == "CLASSIC")
     }
 
     @Test
     fun missingStagesAndUnknownStageAreNeverInvented() {
         val empty = fixtureSleepPoint()
         empty.getJSONObject("sleep").put("stages", JSONArray())
-        val missing = runCatching { parseSleep(empty, now) }.exceptionOrNull()
-        check(missing is Hold && missing.label == "Invalid sleep stage count")
+        check(parseSleep(empty, now).stages.isEmpty())
         val unknown = fixtureSleepPoint()
         val stages = unknown.getJSONObject("sleep").getJSONArray("stages")
         stages.getJSONObject(0).put("type", "UNSUPPORTED_FIXTURE_STAGE")
-        check(runCatching { parseSleep(unknown, now) }.exceptionOrNull() is IllegalArgumentException)
+        check(parseSleep(unknown, now).stages.first().type == StageType.UNKNOWN)
     }
 
     @Test
@@ -83,7 +82,7 @@ class SleepImportBoundaryTest {
         val interval = future.getJSONObject("sleep").getJSONObject("interval")
         interval.put("endTime", "2025-01-04T00:00:00Z")
         val failure = runCatching { readLatest(now, ZoneOffset.UTC) { page(future) } }.exceptionOrNull()
-        check(failure is Hold && failure.label == "Sleep outside requested dates")
+        check(failure is Hold && failure.label == "No eligible completed sleep in recent days")
     }
 
     private fun page(vararg points: JSONObject): JSONObject = JSONObject().put("dataPoints", JSONArray(points.toList()))
@@ -92,9 +91,10 @@ class SleepImportBoundaryTest {
         start: String,
         end: String,
     ): JSONObject {
-        val point = fixtureSleepPoint()
+        val point = fixtureSleepPoint().put("dataPointName", "fixture/$start")
         val sleep = point.getJSONObject("sleep")
-        sleep.getJSONObject("metadata").put("mainSleep", false)
+        sleep.remove("stages")
+        sleep.getJSONObject("metadata").put("mainSleep", false).put("nap", true)
         val interval = sleep.getJSONObject("interval")
         interval.put("startTime", start)
         interval.put("endTime", end)

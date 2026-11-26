@@ -175,12 +175,7 @@ internal fun toRecord(
         startZoneOffset = session.startOffset,
         endTime = session.end,
         endZoneOffset = session.endOffset,
-        metadata =
-            Metadata.autoRecorded(
-                device = Device(type = Device.TYPE_WATCH),
-                clientRecordId = session.key,
-                clientRecordVersion = version,
-            ),
+        metadata = sourceMetadata(session, version),
         title = "Google wearable sleep via Sable Health Bridge",
         stages = session.stages.map { SleepSessionRecord.Stage(it.start, it.end, healthStage(it.type)) },
     )
@@ -192,6 +187,9 @@ private fun healthStage(stage: StageType): Int =
         StageType.DEEP -> SleepSessionRecord.STAGE_TYPE_DEEP
         StageType.REM -> SleepSessionRecord.STAGE_TYPE_REM
         StageType.OUT_OF_BED -> SleepSessionRecord.STAGE_TYPE_OUT_OF_BED
+        StageType.ASLEEP -> SleepSessionRecord.STAGE_TYPE_SLEEPING
+        StageType.UNKNOWN -> SleepSessionRecord.STAGE_TYPE_UNKNOWN
+        StageType.AWAKE_IN_BED -> SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED
     }
 
 private fun fromHealthStage(stage: Int): StageType? =
@@ -201,5 +199,30 @@ private fun fromHealthStage(stage: Int): StageType? =
         SleepSessionRecord.STAGE_TYPE_DEEP -> StageType.DEEP
         SleepSessionRecord.STAGE_TYPE_REM -> StageType.REM
         SleepSessionRecord.STAGE_TYPE_OUT_OF_BED -> StageType.OUT_OF_BED
+        SleepSessionRecord.STAGE_TYPE_SLEEPING -> StageType.ASLEEP
+        SleepSessionRecord.STAGE_TYPE_UNKNOWN -> StageType.UNKNOWN
+        SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED -> StageType.AWAKE_IN_BED
         else -> null
     }
+
+private fun sourceMetadata(
+    session: SleepSession,
+    version: Long,
+): Metadata {
+    val type =
+        when (session.sourceInfo?.formFactor) {
+            "FITNESS_BAND" -> Device.TYPE_FITNESS_BAND
+            "WATCH" -> Device.TYPE_WATCH
+            "PHONE" -> Device.TYPE_PHONE
+            "CHEST_STRAP" -> Device.TYPE_CHEST_STRAP
+            "SCALE" -> Device.TYPE_SCALE
+            else -> Device.TYPE_UNKNOWN
+        }
+    val device = Device(type = type)
+    return when (session.sourceInfo?.recordingMethod) {
+        "PASSIVELY_MEASURED" -> Metadata.autoRecorded(device = device, clientRecordId = session.key, clientRecordVersion = version)
+        "ACTIVELY_MEASURED" -> Metadata.activelyRecorded(device = device, clientRecordId = session.key, clientRecordVersion = version)
+        "MANUAL" -> Metadata.manualEntry(session.key, version, device)
+        else -> Metadata.unknownRecordingMethod(session.key, version, device)
+    }
+}

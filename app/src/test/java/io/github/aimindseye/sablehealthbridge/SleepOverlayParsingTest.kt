@@ -28,8 +28,9 @@ class SleepOverlayParsingTest {
         check(info.unexpectedAwakeningTypes == 0)
         check(info.primaryAsleepMinutes == 50L && info.reportedAsleepMinutes == 47L && info.reportedAwakeMinutes == 13L)
         check(session.key == original.key && session.startOffset == original.startOffset)
-        check(session.asleepMinutes() == 30L)
-        check(session.minutes(StageType.AWAKE) == 15L && session.minutes(StageType.OUT_OF_BED) == 15L)
+        check(session.asleepMinutes() == 35L)
+        check(session.minutes(StageType.AWAKE) == 10L && session.minutes(StageType.OUT_OF_BED) == 15L)
+        check(info.shortAwakeningMinutes == 10L)
         check(existingRecord(toRecord(session, 0)).stages == session.stages)
     }
 
@@ -57,8 +58,8 @@ class SleepOverlayParsingTest {
             val session = parseSleep(point, now)
             val info = requireNotNull(session.overlayInfo)
             check(info.shortAwakenings == 1 && info.unexpectedAwakeningTypes == 1)
-            check(session.asleepMinutes() == 40L)
-            check(session.minutes(StageType.AWAKE) == 20L)
+            check(session.asleepMinutes() == 50L)
+            check(session.minutes(StageType.AWAKE) == 10L && info.shortAwakeningMinutes == 10L)
             check(existingRecord(toRecord(session, 0)).stages == session.stages)
         }
     }
@@ -75,8 +76,8 @@ class SleepOverlayParsingTest {
         val session = parseSleep(point, now)
         val info = requireNotNull(session.overlayInfo)
         check(info.shortAwakenings == 3 && info.unexpectedAwakeningTypes == 2)
-        check(session.asleepMinutes() == 35L)
-        check(session.minutes(StageType.AWAKE) == 25L)
+        check(session.asleepMinutes() == 50L)
+        check(session.minutes(StageType.AWAKE) == 10L && info.shortAwakeningMinutes == 15L)
     }
 
     @Test

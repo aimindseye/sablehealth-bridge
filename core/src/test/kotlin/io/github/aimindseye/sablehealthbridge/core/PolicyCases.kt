@@ -28,10 +28,10 @@ object PolicyCases {
                 check(!validSession(session, start))
             },
             "empty" to {
-                check(!validSession(session.copy(stages = emptyList()), end))
+                check(validSession(session.copy(stages = emptyList()), end))
             },
             "gap" to {
-                check(!validSession(session.copy(stages = stages.drop(1)), end))
+                check(validSession(session.copy(stages = stages.drop(1)), end))
             },
             "overlap" to {
                 val overlapping = listOf(stages[0], stages[1].copy(start = start))
@@ -45,7 +45,7 @@ object PolicyCases {
                 check(!validSession(session.copy(stages = invalid), end))
             },
             "wrong final bound" to {
-                check(!validSession(session.copy(end = end.plusSeconds(1)), end.plusSeconds(1)))
+                check(validSession(session.copy(end = end.plusSeconds(1)), end.plusSeconds(1)))
             },
             "long session" to {
                 check(!validSession(session.copy(end = end.plusSeconds(86400)), end.plusSeconds(86400)))
@@ -114,6 +114,9 @@ object PolicyCases {
             "own update" to {
                 val previous = own.copy(stages = emptyList())
                 check(decide(session, listOf(previous)) == Decision(Action.UPDATE, "own", 2))
+            },
+            "no destructive stage downgrade" to {
+                check(decide(session.copy(stages = emptyList()), listOf(own)).action == Action.CONFLICT)
             },
             "own shifted" to {
                 val shifted = own.copy(start = start.minusSeconds(1))

@@ -27,9 +27,24 @@ fun normalizeOverlays(
         events[overlay.end] = events.getOrDefault(overlay.end, OverlayDelta()) - delta
     }
     val sweep = OverlaySweep(events)
-    val stages = session.stages.flatMap(sweep::split)
+    val stages = sweepSession(session, sweep)
     require(stages.size <= MAX_STAGES)
     return stages
+}
+
+private fun sweepSession(
+    session: SleepSession,
+    sweep: OverlaySweep,
+): List<Stage> {
+    val result = mutableListOf<Stage>()
+    var cursor = session.start
+    session.stages.forEach { stage ->
+        result.addAll(sweep.gap(cursor, stage.start))
+        result.addAll(sweep.split(stage))
+        cursor = stage.end
+    }
+    result.addAll(sweep.gap(cursor, session.end))
+    return result
 }
 
 private data class OverlayDelta(
@@ -52,6 +67,14 @@ private class OverlaySweep(
     private val events: TreeMap<Instant, OverlayDelta>,
 ) {
     private var active = OverlayDelta()
+
+    fun gap(
+        start: Instant,
+        end: Instant,
+    ): List<Stage> {
+        if (start == end) return emptyList()
+        return split(Stage(start, end, StageType.UNKNOWN)).filter { it.type != StageType.UNKNOWN }
+    }
 
     fun split(stage: Stage): List<Stage> {
         val parts = mutableListOf<Stage>()

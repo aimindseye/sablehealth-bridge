@@ -24,43 +24,49 @@ internal fun applySleepOverlays(
     val awake = overlayStages(sleep, "shortAwakenings", StageType.AWAKE)
     val outOfBed = overlayStages(sleep, "outOfBedSegments", StageType.OUT_OF_BED)
     if (awake.stages.isEmpty() && outOfBed.stages.isEmpty()) return primary
-    val normalized =
-        try {
-            normalizeOverlays(primary, awake.stages + outOfBed.stages)
-        } catch (_: IllegalArgumentException) {
-            throw Hold("Invalid sleep overlay bounds or stage limit; no import")
-        }
-    val summary = sleep.optJSONObject("summary")
+    val normalized = checkedNormalize(primary, outOfBed.stages)
+    val shortOnly = primary.copy(stages = emptyList())
+    val shortTimeline = checkedNormalize(shortOnly, awake.stages)
+    val summary = primary.sourceInfo?.summary
+    val source = primary.sourceInfo?.copy(shortAwakenings = awake.stages, outOfBedSegments = outOfBed.stages)
     return primary.copy(
         stages = normalized,
+        sourceInfo = source,
         overlayInfo =
             OverlayInfo(
                 awake.stages.size,
                 outOfBed.stages.size,
                 primary.asleepMinutes(),
-                summaryMinutes(summary, "minutesAsleep"),
-                summaryMinutes(summary, "minutesAwake"),
+                summary?.minutesAsleep,
+                summary?.minutesAwake,
                 awake.unexpectedTypes,
+                shortOnly.copy(stages = shortTimeline).minutes(StageType.AWAKE),
             ),
     )
 }
 
-private fun summaryMinutes(
-    summary: JSONObject?,
-    name: String,
-): Long? = summary?.optLong(name, -1)?.takeIf { it >= 0 }
+private fun checkedNormalize(
+    primary: SleepSession,
+    overlays: List<Stage>,
+): List<Stage> {
+    return try {
+        normalizeOverlays(primary, overlays)
+    } catch (_: IllegalArgumentException) {
+        throw Hold("Invalid sleep overlay bounds or stage limit; no import")
+    }
+}
 
 private fun overlayStages(
     sleep: JSONObject,
     name: String,
     type: StageType,
 ): ParsedOverlays {
-    if (!sleep.has(name)) return ParsedOverlays(emptyList(), 0)
+    if (sleep.isNull(name)) return ParsedOverlays(emptyList(), 0)
     val raw = checkedOverlayArray(sleep, name)
     val entries = (0 until raw.length()).map { raw.optJSONObject(it) ?: throw Hold("Invalid sleep overlay entry") }
     // The collection defines the interval semantics. The child type is redundant metadata.
     val unexpected = entries.count { type == StageType.AWAKE && it.optString("type") != "AWAKE" }
-    val stages = entries.map { parseOverlay(it, type) }
+    val stages = entries.map { parseOverlay(it, type) }.sortedWith(compareBy({ it.start }, { it.end }))
     return ParsedOverlays(stages, unexpected)
 }
 

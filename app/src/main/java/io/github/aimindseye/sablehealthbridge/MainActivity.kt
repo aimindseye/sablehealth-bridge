@@ -32,6 +32,10 @@ internal data class ScreenState(
     val busy: Boolean = false,
     val message: String = "Connect the Google account used by Fitbit Air.",
     val preview: Preview? = null,
+    val sessionIndex: Int = 0,
+    val sessionCount: Int = 0,
+    val heldCount: Int = 0,
+    val diagnostics: String = "",
 )
 
 class MainActivity : ComponentActivity() {
@@ -63,9 +67,11 @@ class MainActivity : ComponentActivity() {
 
             override fun requestPermissions() = healthConsent.launch(SLEEP_PERMISSIONS)
 
-            override suspend fun latest(access: String): SleepSession =
+            override suspend fun batch(access: String): SleepBatch =
                 withContext(Dispatchers.IO) {
-                    readLatest(Instant.now(), ZoneId.systemDefault()) { url -> fetchPage(url, access) }
+                    retrySleepRead {
+                        readSleepBatch(Instant.now(), ZoneId.systemDefault()) { url -> fetchPage(url, access) }
+                    }
                 }
 
             override suspend fun inspect(session: SleepSession): Decision = health.inspect(session)
@@ -88,7 +94,10 @@ class MainActivity : ComponentActivity() {
                         controller::preview,
                         controller::applyPreview,
                         { controller.forget() },
-                    ) { startActivity(Intent(this, PrivacyActivity::class.java)) },
+                        about = { startActivity(Intent(this, PrivacyActivity::class.java)) },
+                        previous = { controller.selectRelative(-1) },
+                        next = { controller.selectRelative(1) },
+                    ),
                 )
             }
         }

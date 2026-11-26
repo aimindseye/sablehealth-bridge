@@ -17,7 +17,7 @@ internal interface BridgeServices {
 
     fun requestPermissions()
 
-    suspend fun latest(access: String): SleepSession
+    suspend fun batch(access: String): SleepBatch
 
     suspend fun inspect(session: SleepSession): Decision
 
@@ -34,6 +34,7 @@ internal class BridgeController(
     var screen by mutableStateOf(ScreenState())
         private set
     private var token: String? = null
+    private var sessions = emptyList<SleepSession>()
 
     fun authorize() {
         if (screen.busy) return
@@ -48,6 +49,7 @@ internal class BridgeController(
     ) {
         if (!scopeAccepted(scopes, access)) {
             token = null
+            clearBatch()
             screen = screen.copy(connected = false)
             fail("Sleep-only scope was not confirmed")
         } else {
@@ -58,6 +60,7 @@ internal class BridgeController(
 
     fun authorizationFailed(message: String = "Google authorization failed; verify Android OAuth registration") {
         token = null
+        clearBatch()
         screen = screen.copy(connected = false)
         fail(message)
     }
@@ -87,12 +90,45 @@ internal class BridgeController(
     fun preview() {
         if (screen.busy) return
         val access = token ?: return fail("Connect Google Health first")
-        execute("Reading latest main sleep…") {
-            val session = services.latest(access)
-            val decision = services.inspect(session)
-            val preview = Preview(session, decision)
-            screen = screen.copy(preview = preview, permissions = true, message = "Review before applying")
+        clearBatch()
+        execute("Reading recent sleep sessions…") {
+            val batch = services.batch(access)
+            sessions = batch.sessions
+            screen =
+                screen.copy(
+                    sessionCount = sessions.size,
+                    heldCount = batch.heldCount,
+                    diagnostics = batch.diagnostics,
+                )
+            if (sessions.isEmpty()) {
+                screen = screen.copy(message = "No eligible completed sleep; review diagnostics")
+            } else {
+                inspectAt(0)
+            }
         }
+    }
+
+    fun selectRelative(step: Int) {
+        if (screen.busy || sessions.size < 2) return
+        val index = (screen.sessionIndex + step).mod(sessions.size)
+        execute("Checking selected sleep…") { inspectAt(index) }
+    }
+
+    private suspend fun inspectAt(index: Int) {
+        val session = sessions[index]
+        val decision = services.inspect(session)
+        screen =
+            screen.copy(
+                preview = Preview(session, decision),
+                permissions = true,
+                sessionIndex = index,
+                message = "Review before applying",
+            )
+    }
+
+    private fun clearBatch() {
+        sessions = emptyList()
+        screen = screen.copy(sessionCount = 0, sessionIndex = 0, heldCount = 0, diagnostics = "")
     }
 
     fun applyPreview() {
@@ -100,9 +136,10 @@ internal class BridgeController(
         val access = token
         if (screen.busy || candidate == null || access == null) return
         execute("Rechecking both sources…") {
-            val fresh = services.latest(access)
+            val batch = services.batch(access)
+            val fresh = batch.sessions.singleOrNull { it.key == candidate.session.key }
             if (fresh != candidate.session) throw Hold("Google sleep changed; preview again")
-            val outcome = services.apply(fresh, candidate.decision)
+            val outcome = services.apply(requireNotNull(fresh), candidate.decision)
             screen = screen.copy(message = outcome)
         }
     }
@@ -134,6 +171,7 @@ internal class BridgeController(
     fun forget(force: Boolean = false) {
         if (screen.busy && !force) return
         token = null
+        clearBatch()
         screen = screen.copy(connected = false, preview = null, busy = false, message = "Local session cleared")
     }
 }

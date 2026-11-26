@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -22,6 +23,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -31,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import io.github.aimindseye.sablehealthbridge.core.Action
 import io.github.aimindseye.sablehealthbridge.core.OverlayInfo
 import io.github.aimindseye.sablehealthbridge.core.SleepSession
+import io.github.aimindseye.sablehealthbridge.core.SourceSleepInfo
 import io.github.aimindseye.sablehealthbridge.core.StageType
 import java.time.Duration
 import java.time.ZoneId
@@ -44,6 +50,8 @@ private const val LIGHT_ARGB = 0xFF54A9DB
 private const val DEEP_ARGB = 0xFF7175D2
 private const val REM_ARGB = 0xFFB19BD8
 private const val OUT_OF_BED_ARGB = 0xFFDBA15B
+private const val ASLEEP_ARGB = 0xFF548CB9
+private const val UNKNOWN_ARGB = 0xFF8A8A8A
 private val darkPrimary = Color(DARK_PRIMARY_ARGB)
 private val lightPrimary = Color(LIGHT_PRIMARY_ARGB)
 private val stagePalette =
@@ -53,8 +61,12 @@ private val stagePalette =
         Color(DEEP_ARGB),
         Color(REM_ARGB),
         Color(OUT_OF_BED_ARGB),
+        Color(ASLEEP_ARGB),
+        Color(UNKNOWN_ARGB),
+        Color(AWAKE_ARGB),
     )
 private const val MINUTES_PER_HOUR = 60
+private val uncertainSourceTypes = setOf("RESTLESS", "OTHER", "MISSING", "SLEEP_STAGE_TYPE_UNSPECIFIED")
 
 @Composable
 internal fun BridgeTheme(content: @Composable () -> Unit) {
@@ -74,6 +86,8 @@ internal data class ScreenActions(
     val apply: () -> Unit,
     val forget: () -> Unit,
     val about: () -> Unit,
+    val previous: () -> Unit = {},
+    val next: () -> Unit = {},
 )
 
 @Composable
@@ -100,7 +114,9 @@ internal fun BridgeScreen(
                     modifier = Modifier.padding(4.dp).testTag("bridge-status"),
                     style = MaterialTheme.typography.bodySmall,
                 )
+                SessionControls(state, actions)
                 state.preview?.let { SleepCard(it) }
+                SchemaDiagnostics(state.diagnostics)
             }
             val item = state.preview
             if (item?.decision?.canWrite == true) {
@@ -118,7 +134,7 @@ internal fun BridgeScreen(
                     enabled = state.connected && !state.busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("preview-sleep"),
                 ) {
-                    Text("Preview latest sleep")
+                    Text("Preview recent sleep")
                 }
             }
         }
@@ -169,22 +185,57 @@ private fun ConnectionCard(
 }
 
 @Composable
+private fun SessionControls(
+    state: ScreenState,
+    actions: ScreenActions,
+) {
+    if (state.sessionCount > 1) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(onClick = actions.previous, enabled = !state.busy) { Text("Previous") }
+            Text("${state.sessionIndex + 1} / ${state.sessionCount}", modifier = Modifier.padding(top = 12.dp))
+            TextButton(onClick = actions.next, enabled = !state.busy) { Text("Next") }
+        }
+    }
+    if (state.heldCount > 0) {
+        Text("${state.heldCount} session(s) deferred or conflicting", style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun SchemaDiagnostics(report: String) {
+    var expanded by remember { mutableStateOf(false) }
+    if (report.isNotBlank()) {
+        TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide diagnostics" else "API diagnostics") }
+        if (expanded) {
+            Text("Select and copy this sanitized schema report.", style = MaterialTheme.typography.labelSmall)
+            SelectionContainer { Text(report, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+}
+
+@Composable
 private fun SleepCard(preview: Preview) {
     val sleep = preview.session
     val format = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
     Card(Modifier.fillMaxWidth().testTag("sleep-preview")) {
         Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Latest main sleep · Google wearable", style = MaterialTheme.typography.labelSmall)
+            Text(sessionLabel(sleep), style = MaterialTheme.typography.labelSmall)
             val hours = sleep.asleepMinutes() / MINUTES_PER_HOUR
             val minutes = sleep.asleepMinutes() % MINUTES_PER_HOUR
-            Text("${hours}h ${minutes}m asleep", style = MaterialTheme.typography.headlineSmall)
+            val headline =
+                if (sleep.stages.isEmpty()) {
+                    "Session only · asleep unavailable"
+                } else {
+                    "${hours}h ${minutes}m known asleep"
+                }
+            Text(headline, style = MaterialTheme.typography.headlineSmall)
             Text(
                 "${format.format(sleep.start)} – ${format.format(sleep.end)}",
                 style = MaterialTheme.typography.bodySmall,
             )
             StageBar(sleep)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StageType.entries.filter { it != StageType.OUT_OF_BED }.forEach { stage ->
+                listOf(StageType.AWAKE, StageType.LIGHT, StageType.DEEP, StageType.REM).forEach { stage ->
                     Column {
                         Text(
                             stage.name.lowercase().replaceFirstChar { it.uppercaseChar() },
@@ -194,9 +245,60 @@ private fun SleepCard(preview: Preview) {
                     }
                 }
             }
+            SourceDetails(sleep)
             sleep.overlayInfo?.let { OverlayDetails(sleep, it) }
             Text(actionLabel(preview.decision.action), style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+
+private fun sessionLabel(sleep: SleepSession): String {
+    val source = sleep.sourceInfo
+    return when {
+        source?.nap == true -> "Nap · Google wearable"
+        source?.mainSleep == true -> "Main sleep · Google wearable"
+        else -> "Sleep session · Google wearable"
+    }
+}
+
+@Composable
+private fun SourceDetails(sleep: SleepSession) {
+    val source = sleep.sourceInfo ?: return
+    Text("Source: ${source.type} · ${source.stagesStatus}", style = MaterialTheme.typography.bodySmall)
+    if (source.processed == null) {
+        Text("Processing status unavailable", style = MaterialTheme.typography.bodySmall)
+    }
+    ExtraStageDetails(sleep, source)
+    val summary = source.summary
+    if (summary != null && sleep.overlayInfo == null) {
+        Text(
+            "Google summary: ${summary.minutesAsleep ?: "—"}m asleep · ${summary.minutesAwake ?: "—"}m awake",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    if (summary != null) {
+        Text(
+            "In period: ${summary.minutesInSleepPeriod ?: "—"}m · latency: ${summary.minutesToFallAsleep ?: "—"}m",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text("After wake: ${summary.minutesAfterWakeUp ?: "—"}m", style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun ExtraStageDetails(
+    sleep: SleepSession,
+    source: SourceSleepInfo,
+) {
+    val extra = listOf(StageType.ASLEEP, StageType.UNKNOWN)
+    if (sleep.stages.any { it.type in extra }) {
+        Text(
+            "Unspecified asleep: ${sleep.minutes(StageType.ASLEEP)}m · Unknown: ${sleep.minutes(StageType.UNKNOWN)}m",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    if (source.sourceStageTypes.any { it in uncertainSourceTypes }) {
+        Text("Restless or unfamiliar stages mapped to unknown", style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -207,6 +309,10 @@ private fun OverlayDetails(
 ) {
     Text(
         "Awake overlays: ${info.shortAwakenings} · Out of bed: ${sleep.minutes(StageType.OUT_OF_BED)}m",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    Text(
+        "Short awakenings: ${info.shortAwakeningMinutes}m · source layer, not subtracted",
         style = MaterialTheme.typography.bodySmall,
     )
     Text(
@@ -232,10 +338,10 @@ private fun OverlayDetails(
 @Composable
 private fun StageBar(session: SleepSession) {
     Canvas(Modifier.fillMaxWidth().height(12.dp)) {
-        val total = Duration.between(session.start, session.end).toMillis().toFloat()
+        val total = Duration.between(session.start, session.end).toNanos().toDouble()
         session.stages.forEach { stage ->
-            val start = Duration.between(session.start, stage.start).toMillis() / total * size.width
-            val width = Duration.between(stage.start, stage.end).toMillis() / total * size.width
+            val start = (Duration.between(session.start, stage.start).toNanos() / total * size.width).toFloat()
+            val width = (Duration.between(stage.start, stage.end).toNanos() / total * size.width).toFloat()
             drawRect(stagePalette[stage.type.ordinal], Offset(start, 0f), Size(width, size.height))
         }
     }

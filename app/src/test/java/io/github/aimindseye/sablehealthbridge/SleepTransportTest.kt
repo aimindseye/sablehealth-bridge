@@ -67,7 +67,7 @@ class SleepTransportTest {
         for (status in listOf(302, 401, 403, 429, 503)) {
             val connection = FixtureConnection(status, byteArrayOf())
             val error = runCatching { fetchPage(url, "fixture-token") { connection } }.exceptionOrNull()
-            check(error is Hold && error.label == "API HTTP $status")
+            check(error is Hold && error.label.startsWith("API HTTP $status"))
             check(connection.disconnected && !connection.streamOpened)
         }
     }

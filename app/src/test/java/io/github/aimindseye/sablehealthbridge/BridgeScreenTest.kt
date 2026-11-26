@@ -43,6 +43,8 @@ class BridgeScreenTest {
                         { actions.add("apply") },
                         { actions.add("forget") },
                         { actions.add("about") },
+                        { actions.add("previous") },
+                        { actions.add("next") },
                     ),
                 )
             }
@@ -122,6 +124,22 @@ class BridgeScreenTest {
         }
         compose.onNodeWithTag("apply-sleep").assertDoesNotExist()
         compose.onNodeWithText(warning).assertDoesNotExist()
+    }
+
+    @Test
+    fun diagnosticsAndSessionNavigationAreExplicit() {
+        mount()
+        val report = "Google Health v4 sleep schema (sanitized)"
+        compose.runOnIdle {
+            screen.value = ScreenState(connected = true, sessionCount = 2, heldCount = 1, diagnostics = report)
+        }
+        compose.onNodeWithText("Previous").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("API diagnostics").performClick()
+        compose.onNodeWithText(report).assertExists()
+        compose.onNodeWithText("Hide diagnostics").performClick()
+        compose.onNodeWithText(report).assertDoesNotExist()
+        compose.runOnIdle { check(actions == listOf("previous", "next")) }
     }
 
     @Test
