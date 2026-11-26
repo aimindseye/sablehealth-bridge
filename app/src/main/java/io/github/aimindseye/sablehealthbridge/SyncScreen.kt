@@ -158,7 +158,7 @@ internal fun syncStatusLabel(status: SyncStatus): String =
         SyncStatus.OFF -> "Not scheduled"
         SyncStatus.READY -> "Waiting for sync"
         SyncStatus.RUNNING -> "Sync in progress"
-        SyncStatus.COMPLETE -> "Last run complete · held records need review"
+        SyncStatus.COMPLETE -> "Last run complete"
         SyncStatus.PAUSED -> "Paused · enable again"
         SyncStatus.AUTH_REQUIRED -> "Google authorization required"
         SyncStatus.ACCOUNT_CHANGED -> "Bound Google account changed · no import"

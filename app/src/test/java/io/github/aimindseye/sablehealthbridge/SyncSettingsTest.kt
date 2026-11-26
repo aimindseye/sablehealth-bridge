@@ -51,7 +51,7 @@ class SyncSettingsTest {
         check(SyncJournal(prefs).state(session) == SyncJournalState.PREVIOUSLY_CONFIRMED)
         settings.stop()
         check(ledger.state(session) == SyncJournalState.PREVIOUSLY_CONFIRMED)
-        check(runCatching { ledger.state(session.copy(key = "invalid")) }.isFailure)
+        check(runCatching { ledger.state(session.copy(key = session.key + "-invalid")) }.isFailure)
     }
 
     @Test

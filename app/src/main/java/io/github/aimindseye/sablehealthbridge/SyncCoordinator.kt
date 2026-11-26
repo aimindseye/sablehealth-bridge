@@ -9,7 +9,11 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+
+private val scheduleLock = Mutex()
 
 internal data class SyncUiState(
     val enabled: Boolean = false,
@@ -59,7 +63,7 @@ internal class SyncCoordinator(
                     refresh()
                     activity.lifecycleScope.launch {
                         try {
-                            scheduler.cancel()
+                            scheduleLock.withLock { scheduler.cancel() }
                             state = state.copy(busy = false)
                         } catch (cancelled: CancellationException) {
                             throw cancelled
@@ -110,8 +114,10 @@ internal class SyncCoordinator(
     ) {
         activity.lifecycleScope.launch {
             try {
-                if (restore && settings.isCurrent(consent)) scheduler.schedule(consent, replace)
-                if (settings.isCurrent(consent)) scheduler.now(consent)
+                scheduleLock.withLock {
+                    if (restore && settings.isCurrent(consent)) scheduler.schedule(consent, replace)
+                    if (settings.isCurrent(consent)) scheduler.now(consent)
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {

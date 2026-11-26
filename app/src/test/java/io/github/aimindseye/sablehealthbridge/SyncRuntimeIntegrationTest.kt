@@ -38,14 +38,18 @@ class SyncRuntimeIntegrationTest {
                 val consent = syncConsent()
                 scheduler.schedule(consent, replace = true)
                 scheduler.schedule(consent, replace = false)
-                val first = manager.getWorkInfosForUniqueWork(SYNC_PERIODIC_WORK)
-                    .get(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
+                val first =
+                    manager
+                        .getWorkInfosForUniqueWork(SYNC_PERIODIC_WORK)
+                        .get(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
                 check(first.count { !it.state.isFinished } == 1)
                 check(first.single { !it.state.isFinished }.state == WorkInfo.State.ENQUEUED)
                 scheduler.now(consent)
                 scheduler.cancel()
-                val after = manager.getWorkInfosForUniqueWork(SYNC_PERIODIC_WORK)
-                    .get(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
+                val after =
+                    manager
+                        .getWorkInfosForUniqueWork(SYNC_PERIODIC_WORK)
+                        .get(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)
                 check(after.none { !it.state.isFinished })
             } finally {
                 manager.cancelAllWork().result.get(SYNC_WAIT_SECONDS, TimeUnit.SECONDS)

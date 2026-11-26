@@ -76,11 +76,12 @@ internal suspend fun runAutomaticSync(
     } catch (_: SecurityException) {
         report = report.copy(status = SyncStatus.PERMISSION_REQUIRED)
     } catch (failure: Hold) {
-        val status = if (failure.label.startsWith("API HTTP 401") || failure.label.startsWith("API HTTP 403")) {
-            SyncStatus.AUTH_REQUIRED
-        } else {
-            SyncStatus.FAILED
-        }
+        val status =
+            if (failure.label.startsWith("API HTTP 401") || failure.label.startsWith("API HTTP 403")) {
+                SyncStatus.AUTH_REQUIRED
+            } else {
+                SyncStatus.FAILED
+            }
         report = report.copy(status = status)
     } catch (_: Exception) {
         report = report.copy(status = SyncStatus.FAILED)

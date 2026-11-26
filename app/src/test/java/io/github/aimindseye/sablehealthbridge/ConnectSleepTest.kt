@@ -121,7 +121,8 @@ class ConnectSleepTest {
     fun automaticReservationFailurePreventsWriteAndUnverifiedWriteIsReported() =
         runBlocking {
             val preview = bridge.inspect(session)
-            check(runCatching { bridge.insertAutomatically(session, preview) { error("reservation failed") } }.isFailure)
+            val failure = runCatching { bridge.insertAutomatically(session, preview) { error("reservation failed") } }
+            check(failure.isFailure)
             check(store.inserts == 0)
             store.persist = false
             check(!bridge.insertAutomatically(session, preview) {})

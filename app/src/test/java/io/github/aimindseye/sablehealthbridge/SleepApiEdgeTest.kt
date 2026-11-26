@@ -50,6 +50,15 @@ class SleepApiEdgeTest {
     }
 
     @Test
+    fun automaticInitialWindowAndRecurringWindowDiffer() {
+        val date = Instant.parse("2025-01-10T12:00:00Z")
+        val points = JSONArray().put(fixtureSleepPoint())
+        val page = JSONObject().put("dataPoints", points)
+        check(readSyncBatch(date, ZoneOffset.UTC, true) { page }.sessions.size == 1)
+        check(readSyncBatch(date, ZoneOffset.UTC, false) { page }.sessions.isEmpty())
+    }
+
+    @Test
     fun overlappingNapAndOutOfWindowSleepAreRejected() {
         val nap = fixtureSleepPoint().apply { getJSONObject("sleep").getJSONObject("metadata").put("mainSleep", false) }
         val error =

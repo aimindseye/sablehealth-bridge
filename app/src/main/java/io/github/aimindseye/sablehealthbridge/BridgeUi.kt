@@ -215,7 +215,8 @@ internal fun PrivacyScreen(back: () -> Unit) {
             )
             Text(
                 "Automatic sync retains a salted account binding, opaque import identities, and aggregate status " +
-                    "locally. No tokens or raw sleep records are persisted. Stop sync to prevent new automatic writes. " +
+                    "locally. No tokens or raw sleep records are persisted. " +
+                    "Stop sync to prevent new automatic writes. " +
                     "An already submitted write may complete. Revoke access in Google account settings.",
             )
             TextButton(onClick = back, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }

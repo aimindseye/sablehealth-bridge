@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,13 +50,17 @@ class SyncScreenTest {
         compose.onNodeWithTag("sync-toggle").performClick()
         compose.onNodeWithText("Allow automatic sync").performClick()
         compose.runOnIdle {
-            state.value = SyncUiState(true, 15, SyncReport(SyncStatus.COMPLETE, 2, 1, 0, 123))
+            val report = SyncReport(SyncStatus.COMPLETE, 2, 1, 0, 123)
+            state.value = SyncUiState(true, 15, report, history = listOf(report))
         }
         compose.onNodeWithText("Automatic sync on").assertIsDisplayed()
         compose.onNodeWithTag("sync-now").performClick()
         compose.onNodeWithTag("sync-toggle").performClick()
         compose.onNodeWithTag("sync-manual").performClick()
         compose.onNodeWithText("About").performClick()
+        compose.onNodeWithText("Sync history").performScrollTo().performClick()
+        compose.onNodeWithText("Last run complete · 2 imported · 0 held").assertExists()
+        compose.onNodeWithText("Hide history").performScrollTo().performClick()
         compose.runOnIdle { check(calls == listOf("15", "enable", "now", "disable", "manual", "about")) }
     }
 
