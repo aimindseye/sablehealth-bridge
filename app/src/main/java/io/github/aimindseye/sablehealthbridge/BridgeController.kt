@@ -1,14 +1,9 @@
 package io.github.aimindseye.sablehealthbridge
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import io.github.aimindseye.sablehealthbridge.core.Decision
 import io.github.aimindseye.sablehealthbridge.core.SleepSession
 import io.github.aimindseye.sablehealthbridge.core.scopeAccepted
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 internal interface BridgeServices {
     fun authorize()
@@ -28,11 +23,15 @@ internal interface BridgeServices {
 }
 
 internal class BridgeController(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val services: BridgeServices,
 ) {
-    var screen by mutableStateOf(ScreenState())
-        private set
+    private val operations = BridgeOperations(scope)
+    var screen: ScreenState
+        get() = operations.screen
+        private set(value) {
+            operations.screen = value
+        }
     private var token: String? = null
     private var sessions = emptyList<SleepSession>()
 
@@ -51,7 +50,7 @@ internal class BridgeController(
             token = null
             clearBatch()
             screen = screen.copy(connected = false)
-            fail("Sleep-only scope was not confirmed")
+            operations.fail("Sleep-only scope was not confirmed")
         } else {
             token = access
             screen = screen.copy(connected = true, busy = false, message = "Google sleep access authorized")
@@ -62,7 +61,7 @@ internal class BridgeController(
         token = null
         clearBatch()
         screen = screen.copy(connected = false)
-        fail(message)
+        operations.fail(message)
     }
 
     fun requestHealth() {
@@ -72,9 +71,9 @@ internal class BridgeController(
             if (services.healthAvailable()) {
                 services.requestPermissions()
             } else {
-                fail("Health Connect unavailable or needs update")
+                operations.fail("Health Connect unavailable or needs update")
             }
-        }.onFailure { fail("Unable to open Health Connect permissions") }
+        }.onFailure { operations.fail("Unable to open Health Connect permissions") }
     }
 
     fun permissionsResult(granted: Boolean) {
@@ -89,9 +88,9 @@ internal class BridgeController(
 
     fun preview() {
         if (screen.busy) return
-        val access = token ?: return fail("Connect Google Health first")
+        val access = token ?: return operations.fail("Connect Google Health first")
         clearBatch()
-        execute("Reading recent sleep sessions…") {
+        operations.execute("Reading recent sleep sessions…") {
             val batch = services.batch(access)
             sessions = batch.sessions
             screen =
@@ -103,7 +102,7 @@ internal class BridgeController(
             if (sessions.isEmpty()) {
                 screen = screen.copy(message = "No eligible completed sleep; review diagnostics")
             } else {
-                inspectAt(0)
+                operations.inspectAt(sessions[0], 0, services)
             }
         }
     }
@@ -111,19 +110,7 @@ internal class BridgeController(
     fun selectRelative(step: Int) {
         if (screen.busy || sessions.size < 2) return
         val index = (screen.sessionIndex + step).mod(sessions.size)
-        execute("Checking selected sleep…") { inspectAt(index) }
-    }
-
-    private suspend fun inspectAt(index: Int) {
-        val session = sessions[index]
-        val decision = services.inspect(session)
-        screen =
-            screen.copy(
-                preview = Preview(session, decision),
-                permissions = true,
-                sessionIndex = index,
-                message = "Review before applying",
-            )
+        operations.execute("Checking selected sleep…") { operations.inspectAt(sessions[index], index, services) }
     }
 
     private fun clearBatch() {
@@ -135,37 +122,13 @@ internal class BridgeController(
         val candidate = screen.preview?.takeIf { it.decision.canWrite }
         val access = token
         if (screen.busy || candidate == null || access == null) return
-        execute("Rechecking both sources…") {
+        operations.execute("Rechecking both sources…") {
             val batch = services.batch(access)
             val fresh = batch.sessions.singleOrNull { it.key == candidate.session.key }
             if (fresh != candidate.session) throw Hold("Google sleep changed; preview again")
             val outcome = services.apply(requireNotNull(fresh), candidate.decision)
             screen = screen.copy(message = outcome)
         }
-    }
-
-    private fun execute(
-        label: String,
-        block: suspend () -> Unit,
-    ) {
-        screen = screen.copy(busy = true, preview = null, message = label)
-        scope.launch {
-            try {
-                block()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (hold: Hold) {
-                fail(hold.label)
-            } catch (_: Exception) {
-                fail("Operation not confirmed; review permissions and records before retrying")
-            } finally {
-                screen = screen.copy(busy = false)
-            }
-        }
-    }
-
-    private fun fail(message: String) {
-        screen = screen.copy(busy = false, preview = null, message = message)
     }
 
     fun forget(force: Boolean = false) {

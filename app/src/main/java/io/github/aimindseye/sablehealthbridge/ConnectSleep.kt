@@ -220,8 +220,18 @@ private fun sourceMetadata(
         }
     val device = Device(type = type)
     return when (session.sourceInfo?.recordingMethod) {
-        "PASSIVELY_MEASURED" -> Metadata.autoRecorded(device = device, clientRecordId = session.key, clientRecordVersion = version)
-        "ACTIVELY_MEASURED" -> Metadata.activelyRecorded(device = device, clientRecordId = session.key, clientRecordVersion = version)
+        "PASSIVELY_MEASURED" ->
+            Metadata.autoRecorded(
+                device = device,
+                clientRecordId = session.key,
+                clientRecordVersion = version,
+            )
+        "ACTIVELY_MEASURED" ->
+            Metadata.activelyRecorded(
+                device = device,
+                clientRecordId = session.key,
+                clientRecordVersion = version,
+            )
         "MANUAL" -> Metadata.manualEntry(session.key, version, device)
         else -> Metadata.unknownRecordingMethod(session.key, version, device)
     }

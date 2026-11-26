@@ -14,11 +14,11 @@ internal fun offset(
     interval: JSONObject,
     name: String,
 ): ZoneOffset? {
-    val raw = interval.opt(name) as? String ?: return null
-    if (!OFFSET_PATTERN.matches(raw)) return null
-    val seconds = raw.removeSuffix("s").toBigDecimalOrNull()?.stripTrailingZeros() ?: return null
-    if (seconds.scale() > 0) return null
-    return runCatching { ZoneOffset.ofTotalSeconds(seconds.intValueExact()) }.getOrNull()
+    val raw = (interval.opt(name) as? String)?.takeIf(OFFSET_PATTERN::matches) ?: return null
+    val seconds = raw.removeSuffix("s").toBigDecimalOrNull()?.stripTrailingZeros()
+    return seconds?.takeIf { it.scale() <= 0 }?.let {
+        runCatching { ZoneOffset.ofTotalSeconds(it.intValueExact()) }.getOrNull()
+    }
 }
 
 internal fun sourceName(point: JSONObject): String {

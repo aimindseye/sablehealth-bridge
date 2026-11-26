@@ -107,7 +107,6 @@ private fun conflictsWith(
     session: SleepSession,
     other: ParsedPoint,
 ): Boolean {
-    if (session.key == other.key) return true
-    val bounds = other.bounds ?: return false
-    return bounds.start < session.end && bounds.end > session.start
+    val bounds = other.bounds
+    return session.key == other.key || (bounds != null && bounds.start < session.end && bounds.end > session.start)
 }

@@ -2,8 +2,6 @@ package io.github.aimindseye.sablehealthbridge
 
 import io.github.aimindseye.sablehealthbridge.core.SleepSession
 import io.github.aimindseye.sablehealthbridge.core.SourceSleepInfo
-import io.github.aimindseye.sablehealthbridge.core.SourceSleepSummary
-import io.github.aimindseye.sablehealthbridge.core.SourceStageSummary
 import io.github.aimindseye.sablehealthbridge.core.Stage
 import io.github.aimindseye.sablehealthbridge.core.StageType
 import io.github.aimindseye.sablehealthbridge.core.sessionKey
@@ -12,7 +10,6 @@ import org.json.JSONObject
 import java.time.Instant
 
 private const val MAX_PRIMARY_STAGES = 20000
-private const val MAX_SUMMARY_STAGES = 100
 internal val sleepTypes = setOf("STAGES", "CLASSIC", "SLEEP_TYPE_UNSPECIFIED")
 internal val sourceStageTypes =
     setOf("AWAKE", "LIGHT", "DEEP", "REM", "ASLEEP", "RESTLESS", "SLEEP_STAGE_TYPE_UNSPECIFIED")
@@ -121,36 +118,6 @@ private fun optionalTime(
     field: String,
 ): Instant? = runCatching { Instant.parse(item.optString(field)) }.getOrNull()
 
-private fun parseSummary(summary: JSONObject?): SourceSleepSummary? {
-    if (summary == null) return null
-    return SourceSleepSummary(
-        sourceNumber(summary, "minutesAsleep"),
-        sourceNumber(summary, "minutesAwake"),
-        sourceNumber(summary, "minutesInSleepPeriod"),
-        sourceNumber(summary, "minutesToFallAsleep"),
-        sourceNumber(summary, "minutesAfterWakeUp"),
-        parseStageSummaries(summary),
-    )
-}
-
-private fun parseStageSummaries(summary: JSONObject): List<SourceStageSummary> {
-    val raw = summary.optJSONArray("stagesSummary") ?: return emptyList()
-    if (raw.length() > MAX_SUMMARY_STAGES) return emptyList()
-    return (0 until raw.length()).mapNotNull { index ->
-        val item = raw.optJSONObject(index) ?: return@mapNotNull null
-        SourceStageSummary(
-            knownLabel(item, "type", sourceStageTypes),
-            sourceNumber(item, "minutes"),
-            sourceNumber(item, "count"),
-        )
-    }
-}
-
-private fun sourceNumber(
-    item: JSONObject,
-    field: String,
-): Long? = item.opt(field)?.toString()?.toLongOrNull()?.takeIf { it >= 0 }
-
 private fun requireParsed(
     condition: Boolean,
     message: String,
@@ -160,13 +127,25 @@ private fun requireParsed(
 
 private val recordingMethods =
     setOf(
-        "MANUAL", "PASSIVELY_MEASURED", "ACTIVELY_MEASURED",
-        "DERIVED", "UNKNOWN", "RECORDING_METHOD_UNSPECIFIED",
+        "MANUAL",
+        "PASSIVELY_MEASURED",
+        "ACTIVELY_MEASURED",
+        "DERIVED",
+        "UNKNOWN",
+        "RECORDING_METHOD_UNSPECIFIED",
     )
 private val formFactors =
     setOf(
-        "FITNESS_BAND", "WATCH", "PHONE", "RING", "CHEST_STRAP", "SCALE",
-        "TABLET", "HEAD_MOUNTED", "SMART_DISPLAY", "FORM_FACTOR_UNSPECIFIED",
+        "FITNESS_BAND",
+        "WATCH",
+        "PHONE",
+        "RING",
+        "CHEST_STRAP",
+        "SCALE",
+        "TABLET",
+        "HEAD_MOUNTED",
+        "SMART_DISPLAY",
+        "FORM_FACTOR_UNSPECIFIED",
     )
 
 private fun SourceSleepInfo.withAttribution(source: JSONObject?): SourceSleepInfo {

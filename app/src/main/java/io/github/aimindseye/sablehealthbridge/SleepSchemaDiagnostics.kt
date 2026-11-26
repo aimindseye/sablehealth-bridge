@@ -4,16 +4,27 @@ import org.json.JSONObject
 
 private val sleepFields =
     setOf(
-        "interval", "type", "stages", "shortAwakenings", "outOfBedSegments",
-        "metadata", "summary", "createTime", "updateTime",
+        "interval",
+        "type",
+        "stages",
+        "shortAwakenings",
+        "outOfBedSegments",
+        "metadata",
+        "summary",
+        "createTime",
+        "updateTime",
     )
 private val intervalFields =
     setOf("startTime", "endTime", "startUtcOffset", "endUtcOffset", "civilStartTime", "civilEndTime")
 private val metaFields = setOf("processed", "mainSleep", "nap", "manuallyEdited", "stagesStatus", "externalId")
 private val summaryFields =
     setOf(
-        "minutesAsleep", "minutesAwake", "minutesInSleepPeriod",
-        "minutesToFallAsleep", "minutesAfterWakeUp", "stagesSummary",
+        "minutesAsleep",
+        "minutesAwake",
+        "minutesInSleepPeriod",
+        "minutesToFallAsleep",
+        "minutesAfterWakeUp",
+        "stagesSummary",
     )
 private val stageFields =
     setOf("startTime", "endTime", "startUtcOffset", "endUtcOffset", "type", "createTime", "updateTime")

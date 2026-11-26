@@ -148,14 +148,33 @@ class SleepCompatibilityTest {
         source.put("recordingMethod", "MANUAL")
         check(toRecord(parseSleep(point, now), 0).metadata.recordingMethod == Metadata.RECORDING_METHOD_MANUAL_ENTRY)
         source.put("recordingMethod", "ACTIVELY_MEASURED")
-        check(toRecord(parseSleep(point, now), 0).metadata.recordingMethod == Metadata.RECORDING_METHOD_ACTIVELY_RECORDED)
+        val active = toRecord(parseSleep(point, now), 0).metadata
+        check(active.recordingMethod == Metadata.RECORDING_METHOD_ACTIVELY_RECORDED)
         source.put("platform", "HEALTH_CONNECT")
         check(runCatching { parseSleep(point, now) }.exceptionOrNull() is Hold)
     }
 
     @Test
+    fun absentMalformedAndOversizedStageSummariesRemainUnavailable() {
+        check(parseSummary(null) == null)
+        val summary = JSONObject()
+        check(requireNotNull(parseSummary(summary)).stages.isEmpty())
+        summary.put("stagesSummary", "not-an-array")
+        check(requireNotNull(parseSummary(summary)).stages.isEmpty())
+        val valid = JSONObject().put("type", "ASLEEP").put("minutes", 15).put("count", 1)
+        summary.put("stagesSummary", JSONArray().put(JSONObject.NULL).put(valid))
+        check(requireNotNull(parseSummary(summary)).stages.single().minutes == 15L)
+        summary.put("stagesSummary", JSONArray(List(101) { valid }))
+        check(requireNotNull(parseSummary(summary)).stages.isEmpty())
+    }
+
+    @Test
     fun offsetsAcceptIntegralDurationButNotFractionalOrInvalidValues() {
-        val interval = JSONObject().put("offset", "-14400.000s")
+        val interval = JSONObject()
+        check(offset(interval, "offset") == null)
+        interval.put("offset", 14400)
+        check(offset(interval, "offset") == null)
+        interval.put("offset", "-14400.000s")
         check(offset(interval, "offset") == ZoneOffset.ofHours(-4))
         for (raw in listOf("3.5s", "99999999s", "bad", "123")) {
             interval.put("offset", raw)
