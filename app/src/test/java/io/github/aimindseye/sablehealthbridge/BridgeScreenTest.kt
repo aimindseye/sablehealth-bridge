@@ -12,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.github.aimindseye.sablehealthbridge.core.Action
 import io.github.aimindseye.sablehealthbridge.core.Decision
+import io.github.aimindseye.sablehealthbridge.core.OverlayInfo
+import io.github.aimindseye.sablehealthbridge.core.StageType
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -92,6 +94,30 @@ class BridgeScreenTest {
         compose.onNodeWithTag("google-connect").assertIsNotEnabled()
         compose.onNodeWithTag("health-connect").assertIsNotEnabled()
         capture("busy")
+    }
+
+    @Test
+    fun overlayPreviewExplainsNormalizedAndSourceTotals() {
+        mount()
+        val original = testSleep()
+        val session =
+            original.copy(
+                stages = original.stages.map { it.copy(type = StageType.OUT_OF_BED) },
+                overlayInfo = OverlayInfo(1, 1, original.asleepMinutes(), 47, null),
+            )
+        compose.runOnIdle {
+            screen.value = ScreenState(connected = true, preview = Preview(session, Decision(Action.INSERT)))
+        }
+        compose.onNodeWithText("Google summary: 47m asleep · —m awake").assertExists()
+        compose.onNodeWithText("Primary stages: ${original.asleepMinutes()}m asleep · Import: 0m").assertExists()
+        compose.onNodeWithTag("apply-sleep").assertIsDisplayed()
+        capture("overlays")
+        compose.runOnIdle {
+            screen.value = screen.value.copy(
+                preview = Preview(session.copy(overlayInfo = OverlayInfo(1, 1, original.asleepMinutes(), null, null)), Decision(Action.CONFLICT)),
+            )
+        }
+        compose.onNodeWithTag("apply-sleep").assertDoesNotExist()
     }
 
     @Test

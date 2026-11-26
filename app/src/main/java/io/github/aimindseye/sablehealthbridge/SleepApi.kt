@@ -169,11 +169,6 @@ internal fun parseSleep(
     val finalized = meta.optBoolean("processed") && meta.optString("stagesStatus") == "SUCCEEDED"
     val detailedMain = sleep.getString("type") == "STAGES" && meta.optBoolean("mainSleep")
     requireData(finalized && detailedMain, "Sleep is not finalized with detailed stages")
-    // Do not silently discard overlay semantics we have not yet qualified.
-    requireData(
-        !hasOverlays(sleep, "shortAwakenings") && !hasOverlays(sleep, "outOfBedSegments"),
-        "Sleep contains overlays; import not yet supported",
-    )
     val interval = sleep.getJSONObject("interval")
     val start = Instant.parse(interval.getString("startTime"))
     val end = Instant.parse(interval.getString("endTime"))
@@ -201,5 +196,5 @@ internal fun parseSleep(
             stages,
         )
     requireData(validSession(session, now), "Sleep stages incomplete, overlapping or invalid")
-    return session
+    return applySleepOverlays(sleep, session)
 }

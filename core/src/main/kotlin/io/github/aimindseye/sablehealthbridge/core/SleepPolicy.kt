@@ -8,17 +8,24 @@ import java.time.ZoneOffset
 const val BRIDGE_PACKAGE = "io.github.aimindseye.sablehealthbridge"
 const val SLEEP_SCOPE = "https://www.googleapis.com/auth/googlehealth.sleep.readonly"
 
-private const val SECONDS_PER_MINUTE = 60
 private const val BYTE_MASK = 255
 private const val MAX_SESSION_HOURS = 24L
-private const val MAX_STAGES = 20000
+internal const val MAX_STAGES = 20000
 
-enum class StageType { AWAKE, LIGHT, DEEP, REM }
+enum class StageType { AWAKE, LIGHT, DEEP, REM, OUT_OF_BED }
 
 data class Stage(
     val start: Instant,
     val end: Instant,
     val type: StageType,
+)
+
+data class OverlayInfo(
+    val shortAwakenings: Int,
+    val outOfBedSegments: Int,
+    val primaryAsleepMinutes: Long,
+    val reportedAsleepMinutes: Long?,
+    val reportedAwakeMinutes: Long?,
 )
 
 data class SleepSession(
@@ -28,20 +35,18 @@ data class SleepSession(
     val startOffset: ZoneOffset?,
     val endOffset: ZoneOffset?,
     val stages: List<Stage>,
+    val overlayInfo: OverlayInfo? = null,
 ) {
-    fun minutes(type: StageType): Long {
-        val seconds =
-            stages
-                .filter { it.type == type }
-                .sumOf { Duration.between(it.start, it.end).seconds }
-        return seconds / SECONDS_PER_MINUTE
-    }
+    fun minutes(type: StageType): Long = totalMinutes(stages.filter { it.type == type })
 
     fun asleepMinutes(): Long =
-        stages
-            .filter { it.type != StageType.AWAKE }
-            .sumOf { Duration.between(it.start, it.end).seconds } / SECONDS_PER_MINUTE
+        totalMinutes(stages.filter { it.type != StageType.AWAKE && it.type != StageType.OUT_OF_BED })
 }
+
+private fun totalMinutes(stages: List<Stage>): Long =
+    stages
+        .fold(Duration.ZERO) { total, stage -> total.plus(Duration.between(stage.start, stage.end)) }
+        .toMinutes()
 
 fun sessionKey(
     sourceName: String,

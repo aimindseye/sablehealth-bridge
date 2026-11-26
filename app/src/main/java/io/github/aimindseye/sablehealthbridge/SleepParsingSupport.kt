@@ -9,14 +9,6 @@ internal fun endTime(point: JSONObject): Instant {
     return Instant.parse(interval.getString("endTime"))
 }
 
-internal fun hasOverlays(
-    sleep: JSONObject,
-    name: String,
-): Boolean {
-    val present = sleep.has(name)
-    return present && sleep.getJSONArray(name).length() > 0
-}
-
 internal fun offset(
     interval: JSONObject,
     name: String,

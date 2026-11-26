@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import io.github.aimindseye.sablehealthbridge.core.Action
+import io.github.aimindseye.sablehealthbridge.core.OverlayInfo
 import io.github.aimindseye.sablehealthbridge.core.SleepSession
 import io.github.aimindseye.sablehealthbridge.core.StageType
 import java.time.Duration
@@ -42,6 +43,7 @@ private const val AWAKE_ARGB = 0xFFD38C9D
 private const val LIGHT_ARGB = 0xFF54A9DB
 private const val DEEP_ARGB = 0xFF7175D2
 private const val REM_ARGB = 0xFFB19BD8
+private const val OUT_OF_BED_ARGB = 0xFFDBA15B
 private val darkPrimary = Color(DARK_PRIMARY_ARGB)
 private val lightPrimary = Color(LIGHT_PRIMARY_ARGB)
 private val stagePalette =
@@ -50,6 +52,7 @@ private val stagePalette =
         Color(LIGHT_ARGB),
         Color(DEEP_ARGB),
         Color(REM_ARGB),
+        Color(OUT_OF_BED_ARGB),
     )
 private const val MINUTES_PER_HOUR = 60
 
@@ -181,7 +184,7 @@ private fun SleepCard(preview: Preview) {
             )
             StageBar(sleep)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StageType.entries.forEach { stage ->
+                StageType.entries.filter { it != StageType.OUT_OF_BED }.forEach { stage ->
                     Column {
                         Text(
                             stage.name.lowercase().replaceFirstChar { it.uppercaseChar() },
@@ -191,8 +194,32 @@ private fun SleepCard(preview: Preview) {
                     }
                 }
             }
+            sleep.overlayInfo?.let { OverlayDetails(sleep, it) }
             Text(actionLabel(preview.decision.action), style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+
+@Composable
+private fun OverlayDetails(
+    sleep: SleepSession,
+    info: OverlayInfo,
+) {
+    Text(
+        "Awake overlays: ${info.shortAwakenings} · Out of bed: ${sleep.minutes(StageType.OUT_OF_BED)}m",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    Text(
+        "Primary stages: ${info.primaryAsleepMinutes}m asleep · Import: ${sleep.asleepMinutes()}m",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    val asleep = info.reportedAsleepMinutes
+    val awake = info.reportedAwakeMinutes
+    if (asleep != null || awake != null) {
+        Text(
+            "Google summary: ${asleep ?: "—"}m asleep · ${awake ?: "—"}m awake",
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

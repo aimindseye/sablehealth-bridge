@@ -1,0 +1,21 @@
+# R11.2 — sleep overlay compatibility
+
+Status: candidate, not owner/device qualified. Exact parent: e5c2f641bd6f67205e4a7869e32f9c0cb7ce5376 (PR #7). R11.1 toolchain, all dependency pins, version 0.2.1-sbr2a/vc3, manifests, permissions, manual confirmation and read-only probes are unchanged. The source revision identifies this APK separately from PR #7. No automatic health writes.
+
+## Problem and conversion policy
+
+Real Fitbit Air sleep returned the prior explicit overlay hold. Google Health v4 documents contiguous primary stages and two overlapping collections: shortAwakenings (awake SleepStage intervals) and outOfBedSegments (intervals). Android Health Connect has non-overlapping sleep stages, including AWAKE and OUT_OF_BED. References: https://developers.google.com/health/reference/rest/v4/users.dataTypes.dataPoints ; https://developers.google.com/health/data-types/sleep ; https://developer.android.com/reference/kotlin/androidx/health/connect/client/records/SleepSessionRecord .
+
+A bounded sweep over timestamp boundaries preserves original session bounds and original primary boundaries. Priority: OUT_OF_BED > AWAKE > primary stage. Identical, nested and crossing overlays form unions, never double-count. Adjacent fragments with identical effective stage inside a primary interval coalesce; no-overlay input preserves the exact previous stage list and identity. Overlay-aware totals exclude out-of-bed time from sleep; durations are summed before rounding to minutes. Source summary is informational, not fabricated when absent; the preview distinguishes primary-stage duration, normalized import duration and reported Google summary. It does not claim Google counts micro-awakenings the same way.
+
+Malformed arrays, non-awake short-awakening type, invalid timestamps, reversed/out-of-bounds intervals, invalid base partition and excessive count remain fail-closed. No raw personal data logged or stored. The resource cap is 20,000 input overlays and 20,000 normalized stages. Existing stable session key, strict external-record matching, write confirmation, owned-record update and deletion controls remain intact; no destructive reconciliation added.
+
+## Tests and limits
+
+Core sweep tests cover union, crossing, ordering, duplicates, endpoints, no-op overlays, fractional rounding, limits and malformed bounds. Parser tests cover both overlay kinds, round-trip Health Connect mapping, summaries and malformed arrays/entries. Compose preview test covers distinct source and import totals. Existing tests remain, including malformed-overlay rejection. CI must pass unchanged quality gates and actual PR new-code coverage >=80%; additionally assess changes against PR #7 using fresh JaCoCo line/branch reports. No CI results or real device compatibility claimed by the author.
+
+This correction handles both documented overlapping fields for the existing finalized detailed main-sleep import. Classic sleep, naps, missing or incomplete primary-stage data, selecting more than one session and automatic synchronization require separate qualified session selection/mapping policy; do not invent sleep stages, bypass foreign overlap checks, or make automatic writes in this candidate.
+
+## Owner acceptance
+
+Use synthetic and real Q25 examples, compare Google Health summary and actual Health Connect/Sable Health stage durations, and verify out-of-bed is not counted asleep. Repeat preview/import to verify idempotency; never delete foreign records. Verify the exact signed APK, test two-minute and 75-minute read-only probes, cancellation/revocation and normal manual import. Public distribution remains gated by license/notice completion and prerelease Health Connect risk acceptance. Merge only after owner approval; preserve prior drafts until then.

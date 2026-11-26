@@ -191,6 +191,7 @@ private fun healthStage(stage: StageType): Int =
         StageType.LIGHT -> SleepSessionRecord.STAGE_TYPE_LIGHT
         StageType.DEEP -> SleepSessionRecord.STAGE_TYPE_DEEP
         StageType.REM -> SleepSessionRecord.STAGE_TYPE_REM
+        StageType.OUT_OF_BED -> SleepSessionRecord.STAGE_TYPE_OUT_OF_BED
     }
 
 private fun fromHealthStage(stage: Int): StageType? =
@@ -199,5 +200,6 @@ private fun fromHealthStage(stage: Int): StageType? =
         SleepSessionRecord.STAGE_TYPE_LIGHT -> StageType.LIGHT
         SleepSessionRecord.STAGE_TYPE_DEEP -> StageType.DEEP
         SleepSessionRecord.STAGE_TYPE_REM -> StageType.REM
+        SleepSessionRecord.STAGE_TYPE_OUT_OF_BED -> StageType.OUT_OF_BED
         else -> null
     }
