@@ -97,7 +97,9 @@ class SyncCoordinatorTest {
     }
 }
 
-private class CoordinatorFixture(activity: ComponentActivity) {
+private class CoordinatorFixture(
+    activity: ComponentActivity,
+) {
     val scheduler = FixtureScheduler()
     var requests = 0
     var bindFailure: Exception? = null

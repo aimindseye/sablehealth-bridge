@@ -58,3 +58,15 @@ internal class SyncAuthorization(
         }
     }
 }
+
+internal fun interface SyncConsentRequest {
+    fun request()
+}
+
+internal fun interface SyncAuthorizationFactory {
+    fun create(
+        activity: ComponentActivity,
+        accepted: (ProbeAuthorization) -> Unit,
+        failed: (SyncStatus) -> Unit,
+    ): SyncConsentRequest
+}

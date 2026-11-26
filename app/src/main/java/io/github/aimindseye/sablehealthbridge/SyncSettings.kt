@@ -1,6 +1,7 @@
 package io.github.aimindseye.sablehealthbridge
 
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
 import android.content.SharedPreferences
 import java.util.UUID
 
@@ -11,9 +12,7 @@ private const val MAX_SYNC_MINUTES = 60
 internal val syncIntervals = listOf(MIN_SYNC_MINUTES, DEFAULT_SYNC_MINUTES, MAX_SYNC_MINUTES)
 private val settingsLock = Any()
 
-internal fun syncPreferences(context: Context): SharedPreferences {
-    return context.getSharedPreferences(SYNC_PREFERENCES, Context.MODE_PRIVATE)
-}
+internal fun syncPreferences(ctx: Context): SharedPreferences = ctx.getSharedPreferences(SYNC_PREFERENCES, MODE_PRIVATE)
 
 /** Private, non-backed-up configuration and aggregate status. No tokens or raw records. */
 internal class SyncSettings(
