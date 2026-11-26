@@ -5,8 +5,8 @@ cd "$(dirname "$0")/.."
 [[ $# == 2 && -t 0 && -f "$1" && -n "$2" ]] || { echo 'Usage: tools/build-release.sh KEYSTORE ALIAS (interactive)'; exit 2; }
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || { echo HOLD_DIRTY_CHECKOUT; exit 2; }
 commit="$(git rev-parse HEAD)"
-version=0.1.0-sbr1
-code=1
+version=0.2.0-sbr2a
+code=2
 out="$HOME/Downloads/sablehealth-bridge-release/$version/$commit"
 [[ ! -e "$out" && ! -L "$out" ]] || { echo HOLD_OUTPUT_EXISTS; exit 2; }
 sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
