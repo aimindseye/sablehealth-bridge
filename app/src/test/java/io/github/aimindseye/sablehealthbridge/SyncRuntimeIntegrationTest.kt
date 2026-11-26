@@ -1,14 +1,17 @@
 package io.github.aimindseye.sablehealthbridge
 
+import androidx.activity.ComponentActivity
 import androidx.work.Data
 import androidx.work.ListenableWorker
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
+import androidx.work.workDataOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
@@ -26,6 +29,37 @@ class SyncRuntimeIntegrationTest {
             val worker = TestListenableWorkerBuilder<AutomaticSyncWorker>(context, inputData = Data.EMPTY).build()
             check(worker.doWork() == ListenableWorker.Result.success())
         }
+
+    @Test
+    fun realWorkerPausesWhenBackgroundHealthAccessIsUnavailable() =
+        runBlocking {
+            val context = RuntimeEnvironment.getApplication()
+            check(!backgroundReadAvailable(context))
+            val settings = SyncSettings(syncPreferences(context))
+            val fixture = syncConsent()
+            val consent = settings.enable(fixture.salt, fixture.binding, fixture.minutes)
+            val input = workDataOf(SYNC_GENERATION to consent.generation)
+            val worker = TestListenableWorkerBuilder<AutomaticSyncWorker>(context, inputData = input).build()
+            check(worker.doWork() == ListenableWorker.Result.success())
+            check(settings.current() == null)
+            check(settings.report().status == SyncStatus.UNAVAILABLE)
+        }
+
+    @Test
+    fun realForegroundAuthorizationStopsWhenFeatureUnavailable() {
+        val controller = Robolectric.buildActivity(ComponentActivity::class.java)
+        val activity = controller.get()
+        val outcomes = mutableListOf<SyncStatus>()
+        val authorization = SyncAuthorization(activity, { error("Unexpected consent") }, { outcomes.add(it) })
+        controller.setup()
+        try {
+            check(!backgroundReadAvailable(activity))
+            authorization.request()
+            check(outcomes == listOf(SyncStatus.UNAVAILABLE))
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
 
     @Test
     fun periodicWorkIsUniqueAndCanBeCancelled() =

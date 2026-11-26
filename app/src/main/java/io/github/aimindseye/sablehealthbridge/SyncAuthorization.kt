@@ -13,7 +13,7 @@ internal class SyncAuthorization(
     private val activity: ComponentActivity,
     private val accepted: (ProbeAuthorization) -> Unit,
     private val failed: (SyncStatus) -> Unit,
-) {
+) : SyncConsentRequest {
     private val auth by lazy { Identity.getAuthorizationClient(activity) }
     private val consent =
         activity.registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -30,7 +30,7 @@ internal class SyncAuthorization(
             if (granted.containsAll(PROBE_PERMISSIONS)) authorize() else failed(SyncStatus.PERMISSION_REQUIRED)
         }
 
-    fun request() {
+    override fun request() {
         runCatching {
             if (backgroundReadAvailable(activity)) {
                 permissions.launch(PROBE_PERMISSIONS)

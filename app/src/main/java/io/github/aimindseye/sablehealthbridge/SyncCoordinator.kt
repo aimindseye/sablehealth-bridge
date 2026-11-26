@@ -27,10 +27,12 @@ internal data class SyncUiState(
 internal class SyncCoordinator(
     private val activity: ComponentActivity,
     private val scheduler: SyncScheduler = AndroidSyncScheduler(activity),
+    authorizationFactory: SyncAuthorizationFactory = SyncAuthorizationFactory(::SyncAuthorization),
+    private val bindAccount: (String, String) -> String = { access, salt -> readAccountBinding(access, salt) },
 ) {
     private val prefs by lazy { syncPreferences(activity) }
     private val settings by lazy { SyncSettings(prefs) }
-    private val authorization = SyncAuthorization(activity, ::accept, ::fail)
+    private val authorization = authorizationFactory.create(activity, ::accept, ::fail)
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> refresh() }
     var state by mutableStateOf(SyncUiState())
         private set
@@ -91,7 +93,7 @@ internal class SyncCoordinator(
                     withContext(Dispatchers.IO) {
                         val access = silentAccess(grant)
                         val salt = settings.salt()
-                        val binding = readAccountBinding(access, salt)
+                        val binding = bindAccount(access, salt)
                         settings.enable(salt, binding, minutes)
                     }
                 state = state.copy(busy = false)
