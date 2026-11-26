@@ -91,9 +91,15 @@ class SleepCompatibilityTest {
         val interval = sleep.getJSONObject("interval")
         interval.put("startTime", "2025-01-02T09:00:00Z").put("endTime", "2025-01-02T09:30:00Z")
         val other = fixtureSleepPoint().put("dataPointName", "fixture/overlap")
-        val page = JSONObject().put("dataPoints", JSONArray().put(main).put(other).put(nap).put(JSONObject()))
+        val records = JSONArray()
+        records.put(main)
+        records.put(other)
+        records.put(nap)
+        records.put(JSONObject())
+        val page = JSONObject().put("dataPoints", records)
         val batch = readSleepBatch(now, ZoneOffset.UTC) { page }
-        check(batch.sessions.single().sourceInfo?.nap == true && batch.heldCount == 3)
+        val session = batch.sessions.single()
+        check(session.sourceInfo?.nap == true && batch.heldCount == 3)
     }
 
     @Test

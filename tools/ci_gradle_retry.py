@@ -5,6 +5,7 @@ import time
 
 COMMAND = (
     'gradle', '--no-daemon', '--console=plain', '--no-build-cache', '--rerun-tasks',
+    '--continue',
     ':core:test', ':core:jacocoTestReport', ':app:createDebugUnitTestCoverageReport',
     ':app:assembleDebug', ':app:assembleRelease', ':app:lintDebug', ':app:lintRelease',
     'detekt', 'ktlintCheck',

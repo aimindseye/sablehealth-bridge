@@ -52,6 +52,8 @@ class RetryTests(unittest.TestCase):
             with self.subTest(old=old):
                 self.assertFalse(gate.retryable(LIMIT.replace(old, new)))
         self.assertFalse(gate.retryable(LIMIT + LIMIT))
+        mixed = LIMIT + "Execution failed for task ':core:ktlintTestSourceSetCheck'.\n"
+        self.assertEqual(self.exercise([(1, mixed)]), (1, 1, []))
         self.assertFalse(gate.retryable(LIMIT + "Could not GET 'https://example.invalid/a'\n"))
 
     def test_subprocess_stream_and_exit(self):
@@ -62,7 +64,10 @@ class RetryTests(unittest.TestCase):
     def test_main_and_full_command(self):
         with patch.object(gate, 'run_gate', return_value=7):
             self.assertEqual(gate.main(), 7)
-        self.assertEqual(gate.COMMAND[5:], (
+        self.assertEqual(gate.COMMAND[:6], (
+            'gradle', '--no-daemon', '--console=plain', '--no-build-cache', '--rerun-tasks', '--continue',
+        ))
+        self.assertEqual(gate.COMMAND[6:], (
             ':core:test', ':core:jacocoTestReport', ':app:createDebugUnitTestCoverageReport',
             ':app:assembleDebug', ':app:assembleRelease', ':app:lintDebug', ':app:lintRelease',
             'detekt', 'ktlintCheck',
