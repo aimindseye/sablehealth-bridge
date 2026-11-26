@@ -5,6 +5,7 @@ import io.github.aimindseye.sablehealthbridge.core.SleepSession
 import io.github.aimindseye.sablehealthbridge.core.Stage
 import io.github.aimindseye.sablehealthbridge.core.StageType
 import io.github.aimindseye.sablehealthbridge.core.normalizeOverlays
+import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -49,12 +50,20 @@ private fun overlayStages(
     type: StageType,
 ): List<Stage> {
     if (!sleep.has(name)) return emptyList()
-    val raw = sleep.optJSONArray(name) ?: throw Hold("Invalid sleep overlay array")
-    if (raw.length() > MAX_OVERLAY_COUNT) throw Hold("Sleep overlay count exceeds limit")
+    val raw = checkedOverlayArray(sleep, name)
     return (0 until raw.length()).map { index ->
         val item = raw.optJSONObject(index) ?: throw Hold("Invalid sleep overlay entry")
         parseOverlay(item, type)
     }
+}
+
+private fun checkedOverlayArray(
+    sleep: JSONObject,
+    name: String,
+): JSONArray {
+    val raw = sleep.optJSONArray(name) ?: throw Hold("Invalid sleep overlay array")
+    if (raw.length() > MAX_OVERLAY_COUNT) throw Hold("Sleep overlay count exceeds limit")
+    return raw
 }
 
 private fun parseOverlay(

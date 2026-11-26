@@ -114,7 +114,11 @@ class BridgeScreenTest {
         capture("overlays")
         compose.runOnIdle {
             screen.value = screen.value.copy(
-                preview = Preview(session.copy(overlayInfo = OverlayInfo(1, 1, original.asleepMinutes(), null, null)), Decision(Action.CONFLICT)),
+                preview =
+                    Preview(
+                        session.copy(overlayInfo = OverlayInfo(1, 1, original.asleepMinutes(), null, null)),
+                        Decision(Action.CONFLICT),
+                    ),
             )
         }
         compose.onNodeWithTag("apply-sleep").assertDoesNotExist()

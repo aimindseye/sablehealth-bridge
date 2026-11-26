@@ -47,7 +47,8 @@ class SleepOverlaysTest {
         val full = normalizeOverlays(base, listOf(stage(0, 60, StageType.OUT_OF_BED)))
         check(full == listOf(stage(0, 30, StageType.OUT_OF_BED), stage(30, 60, StageType.OUT_OF_BED)))
         val touching = listOf(stage(10, 20, StageType.AWAKE), stage(20, 30, StageType.AWAKE))
-        check(normalizeOverlays(base, touching) == listOf(stage(0, 10, StageType.LIGHT), stage(10, 30, StageType.AWAKE), base.stages.last()))
+        val expected = listOf(stage(0, 10, StageType.LIGHT), stage(10, 30, StageType.AWAKE), base.stages.last())
+        check(normalizeOverlays(base, touching) == expected)
     }
 
     @Test
@@ -63,7 +64,8 @@ class SleepOverlaysTest {
         invalid.forEach {
             check(runCatching { normalizeOverlays(base, listOf(it)) }.exceptionOrNull() is IllegalArgumentException)
         }
-        check(runCatching { normalizeOverlays(base.copy(stages = emptyList()), emptyList()) }.exceptionOrNull() is IllegalArgumentException)
+        val invalidBase = base.copy(stages = emptyList())
+        check(runCatching { normalizeOverlays(invalidBase, emptyList()) }.exceptionOrNull() is IllegalArgumentException)
     }
 
     @Test
@@ -93,7 +95,11 @@ class SleepOverlaysTest {
         val session =
             base.copy(
                 end = start.plusSeconds(61),
-                stages = listOf(Stage(start, middle, StageType.REM), Stage(middle, start.plusSeconds(61), StageType.REM)),
+                stages =
+                    listOf(
+                        Stage(start, middle, StageType.REM),
+                        Stage(middle, start.plusSeconds(61), StageType.REM),
+                    ),
             )
         check(session.asleepMinutes() == 1L && session.minutes(StageType.REM) == 1L)
     }

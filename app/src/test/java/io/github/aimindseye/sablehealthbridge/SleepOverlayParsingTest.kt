@@ -54,7 +54,10 @@ class SleepOverlayParsingTest {
                 JSONObject().put("outOfBedSegments", JSONArray().put(JSONObject())),
                 JSONObject().put("outOfBedSegments", JSONArray().put(overlay("35", "20"))),
                 JSONObject().put("outOfBedSegments", JSONArray().put(overlay("20", "99"))),
-                JSONObject().put("outOfBedSegments", JSONArray().put(overlay("20", "35").put("endTime", "2025-01-02T00:01:00Z"))),
+                JSONObject().put(
+                    "outOfBedSegments",
+                    JSONArray().put(overlay("20", "35").put("endTime", "2025-01-02T00:01:00Z")),
+                ),
                 JSONObject().put("outOfBedSegments", JSONArray(List(20001) { overlay("20", "21") })),
             )
         cases.forEach { fields ->
