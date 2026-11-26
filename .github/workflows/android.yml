@@ -31,7 +31,7 @@ jobs:
         run: |
           python3 tools/check-contract.py
           python3 -B -m unittest discover -s tests -v
-          gradle --no-daemon --console=plain :core:test :core:jacocoTestReport :app:createDebugUnitTestCoverageReport :app:assembleDebug :app:assembleRelease :app:lintDebug :app:lintRelease detekt ktlintCheck
+          python3 -B tools/ci_gradle_retry.py
           python3 tools/check-coverage.py
       - name: Collect resolved dependencies and unsigned APK manifest evidence
         run: |
