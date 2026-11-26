@@ -47,3 +47,7 @@ See the outer package README. Source checks and core policy cases can execute
 without Android. Android compile, detekt, ktlint, lint, real coverage, startup
 captures, release minification, Google authorization, actual write/read-back and
 CI are mandatory owner-side checks, not claimed to have passed here.
+
+## Research and acknowledgements
+
+Thanks to the [Google Health API](https://developers.google.com/health/) and [Android Health Connect](https://developer.android.com/health-and-fitness/health-connect) documentation, [Sable Health](https://github.com/aimindseye/sablehealth), [FitMesh Sync](https://www.fitmesh.fit/en/integrations), [Open Health Sync](https://github.com/soma-intelligence/open-health-sync), [Open Wearables](https://github.com/the-momentum/open-wearables), [fitbit-air-mac (Raphael Hauser)](https://github.com/raphaelhauser/fitbit-air-mac), [fitbit-air (Thore Koritzius)](https://github.com/ThoreKoritzius/fitbit-air) and [Golden Gate](https://github.com/Google-Health-API/golden-gate) for platform documentation and relevant research/comparisons. These links acknowledge research, not code inclusion, affiliation, endorsement or supported direct BLE integration. See [Bridge research and evidence](docs/research/BRIDGE_RESEARCH_2026-11-26.md) and [Sable Health research archive](https://github.com/aimindseye/sablehealth/tree/main/docs/sable-health). Third-party dependency notices remain separate in [docs/third-party](docs/third-party/README.md).
