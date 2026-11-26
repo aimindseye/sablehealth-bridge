@@ -24,6 +24,13 @@ plugins {
 subprojects {
     pluginManager.apply("io.gitlab.arturbosch.detekt")
     pluginManager.apply("org.jlleitschuh.gradle.ktlint")
+    // R11.1 follow-up: only the ktlint CLI tool configuration, not app runtime.
+    configurations.named("ktlint") {
+        resolutionStrategy.force(
+            "ch.qos.logback:logback-core:1.6.8",
+            "ch.qos.logback:logback-classic:1.6.8",
+        )
+    }
     extensions.configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
         buildUponDefaultConfig = true
         config.setFrom(rootProject.files("config/detekt.yml"))

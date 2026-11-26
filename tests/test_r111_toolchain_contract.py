@@ -41,3 +41,17 @@ class ToolchainContractTests(unittest.TestCase):
             count = workflow.count("uses: gradle/actions/setup-gradle@")
             self.assertGreater(count, 0)
             self.assertEqual(workflow.count("cache-disabled: true"), count)
+
+    def test_ktlint_logging_scope(self):
+        root = (ROOT / "build.gradle.kts").read_text()
+        scope = root.split('configurations.named("ktlint") {', 1)[1].split(
+            "extensions.configure", 1
+        )[0]
+        self.assertIn("resolutionStrategy.force(", scope)
+        for module in ("logback-core", "logback-classic"):
+            pin = "ch.qos.logback:" + module + ":1.6.8"
+            self.assertEqual(root.count(pin), 1)
+            self.assertIn(pin, scope)
+            for path in ("app/build.gradle.kts", "core/build.gradle.kts"):
+                self.assertNotIn("ch.qos.logback:", (ROOT / path).read_text())
+        self.assertNotIn("configurations.all", root)

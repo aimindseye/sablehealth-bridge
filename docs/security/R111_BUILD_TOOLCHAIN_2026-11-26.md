@@ -29,3 +29,11 @@ References: https://www.bouncycastle.org/resources/new-release-bouncy-castle-jav
 - Do not merge old drafts independently. Only the final candidate may be merged after actual evidence and owner approval. Public distribution remains separately gated by license/notice obligations.
 
 No local Android build or scan was performed by the author of this candidate; the package owner must execute the qualification. Keep exact-head evidence; any change invalidates acceptance.
+
+## R11.1 follow-up — ktlint logging dependency
+
+PR #6 at `39af715ff5fe3b1d3e39e84cd0b2c98873e22143`: all six CI checks green after a CodeQL dependency-resolution retry; CI combined local coverage 89.96% (core 97.86%, app 88.67%). Owner isolated resolution verified prior eight build pins; release 138, test 186, build 119 and detached 2 coordinates scanned with zero findings, tools 285 coordinates with six findings. The local runner stopped before build/license collection. The six reported advisories all affect logback-core 1.3.14, selected in :app/ktlint and :core/ktlint (CVE-2025-11226, CVE-2024-12801, CVE-2026-10532, CVE-2026-9828, CVE-2024-12798, CVE-2026-1225). Two moderate and four low per owner scan. No APK vulnerability inferred.
+
+Candidate: align logback-core and logback-classic to 1.6.8, only within the named ktlint configuration in both subprojects. Keep existing ktlint plugin/engine, formatting rules, build pins, app/test dependencies, manifests and workflows unchanged. Upstream [release notes](https://logback.qos.ch/news.html) and [download requirements](https://logback.qos.ch/download.html): 1.3.x end-of-life, 1.6.8 released Nov 19, Java 11+ runtime. Legacy Janino-style logging conditionals were removed; actual ktlint checks and logging compatibility must be verified, not assumed. Do not disable lint or change its rules to get green CI.
+
+Preserve PR #6 and previous evidence. Require both named configurations to actually resolve aligned versions; verify no Logback introduced in release/test/build graphs, compare all five scopes with prior evidence, fresh OSV scans, full local preflight, CI, licenses/notices and Sonar PR new-code coverage before signing. No current clean-tools scan or Android test claimed. Public distribution and automated writes remain unauthorized.
