@@ -14,6 +14,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 internal const val ENDPOINT = "https://health.googleapis.com/v4/users/me/dataTypes/sleep/dataPoints:reconcile"
+private const val IDENTITY_ENDPOINT = "https://health.googleapis.com/v4/users/me/identity"
 private const val FAMILY = "users/me/dataSourceFamilies/google-wearables"
 private const val MAX_BYTES = 8 * 1024 * 1024
 private const val MAX_PAGES = 20
@@ -57,6 +58,19 @@ internal fun fetchPage(
     open: (String) -> HttpURLConnection = ::openGoogleConnection,
 ): JSONObject {
     require(url.startsWith("$ENDPOINT?"))
+    return fetchGoogle(url, token, open)
+}
+
+internal fun fetchIdentity(
+    token: String,
+    open: (String) -> HttpURLConnection = ::openGoogleConnection,
+): JSONObject = fetchGoogle(IDENTITY_ENDPOINT, token, open)
+
+private fun fetchGoogle(
+    url: String,
+    token: String,
+    open: (String) -> HttpURLConnection,
+): JSONObject {
     val connection = open(url)
     try {
         connection.instanceFollowRedirects = false

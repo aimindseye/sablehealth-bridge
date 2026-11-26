@@ -22,3 +22,11 @@ The source ratchet is not a clean-scan claim. Tapjacking and screenshot protecti
 ## SonarCloud
 
 The new Python checker is included in genuine branch/line coverage measurement through pinned CI-only coverage.py 7.13.3. No source exclusions or quality-gate threshold changes. Existing Kotlin reports are untouched. The main-branch quality gate remains independently required.
+
+## SB-R2A-R10 — exact manifest reconciliation (proposed source-CI only)
+
+PR 2 head `83d6e17530b39a4bf96ed8e6f2d5d917cfafec5c`; Security run `45758712819`, attempt 2, MobSF job `139901847091`, artifact `15115978884` (SHA-256 `7bc6f33293d4f328ce4ba9c51159e85b2a75d48fa543f6640cb1f496fedd03a0`). The scanner completed and the APK SDK verification passed. The gate stopped at `source evidence changed: app/src/main/AndroidManifest.xml`. All eight actual findings match the previous exact normalized multiset, with no additions, removals or severity/message/location/snippet changes. The old test fixture and checker remain unchanged.
+
+The manifest adds Health Connect background-read permission and an exported launcher-only BackgroundProbeActivity for explicit local read-only qualification. The CI APK reports package io.github.aimindseye.sablehealthbridge, version 0.2.0-sbr2a/code 2, min SDK 30 and target SDK 36. These SDK values support the existing disposition for the scanner's target-SDK assumption; they do not prove absence of other activity or IPC vulnerabilities. The source manifest SHA-256 changes from `9579bcb7d35f13ffafa7e6108c9c6d594daa555e24e3ddefe75483d0a6006595` to `8e5fb1f3fc1035c9280ddc1da31e631770ec6afe362e12e2f6430414fb980bc5`. The test-source hash is unchanged.
+
+Only exact manifest evidence and scan provenance are refreshed in the JSON policy. All eight findings remain visible and subject to exact matching. Owner review of this narrow source-CI reconciliation is required before application/commit. No signed or public APK approval, no acceptance of residual risks, and no permission, Kotlin, dependency, scanner, coverage or workflow changes are granted by this reconciliation. Lint reconciliation, exported HealthDataSdkService caller validation, binary/license notices, privacy metadata retention and device qualification remain open.

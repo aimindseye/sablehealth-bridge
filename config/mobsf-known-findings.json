@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "source_commit": "76fb38640b1cb700ed2d766e15ab30acee05796b",
-  "source_artifact": 15065970288,
+  "source_commit": "83d6e17530b39a4bf96ed8e6f2d5d917cfafec5c",
+  "source_artifact": 15115978884,
   "scanner": "mobsfscan",
   "version": "0.4.5",
   "scope": "SOURCE_CI_RATCHET_ONLY_RELEASE_HOLD",
   "frozen": {
-    "app/src/main/AndroidManifest.xml": "9579bcb7d35f13ffafa7e6108c9c6d594daa555e24e3ddefe75483d0a6006595",
+    "app/src/main/AndroidManifest.xml": "8e5fb1f3fc1035c9280ddc1da31e631770ec6afe362e12e2f6430414fb980bc5",
     "app/src/test/java/io/github/aimindseye/sablehealthbridge/BridgeControllerTest.kt": "3c4cb609221403adab5cc4deae592da996546b1ccd025a2634ff77024f9c4082"
   },
   "findings": [
