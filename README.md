@@ -53,7 +53,7 @@ CI are mandatory owner-side checks, not claimed to have passed here.
 
 ## R11 toolchain and security qualification
 
-AGP 9.1.1, Gradle 9.3.1 (distribution SHA-256 pinned), Kotlin 2.3.21,
+AGP 9.2.1, Gradle 9.4.1 (distribution SHA-256 pinned), Kotlin 2.3.21,
 compile SDK 37.0, target SDK 36, min SDK 30, JDK 21. The existing audited
 Gradle 8.13 wrapper launcher/JAR is retained only as the bootstrap for the
 pinned distribution; do not replace it with an unverified binary. Android
@@ -66,3 +66,9 @@ All existing quality and security gates remain mandatory. Reconcile the actual
 resolved dependency graph, notices, exported components, Lint and MobSF evidence
 and complete real device testing before signing or merging. The historical
 third-party inventory is not evidence for the upgraded dependency graph.
+
+AGP 9.2.1 is selected because AGP 9.1.1 reported three false-positive
+WrongConstant errors in the background availability checks (Google issue
+478779827, fixed in AGP 9.2.0). The patch release also addresses an R8 class
+loading defect (issue 504996348). No Lint suppressions, baselines, source
+changes or quality-gate exceptions are introduced for these errors.

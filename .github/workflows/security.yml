@@ -43,7 +43,7 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
-          gradle-version: '9.3.1'
+          gradle-version: '9.4.1'
       - run: |
           sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
           "$sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0'
@@ -68,7 +68,7 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
-          gradle-version: '9.3.1'
+          gradle-version: '9.4.1'
       - name: Verify effective release APK SDK levels
         run: |
           sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
