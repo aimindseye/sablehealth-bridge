@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "source_commit": "76fb38640b1cb700ed2d766e15ab30acee05796b",
+  "source_artifact": 15065970288,
+  "scanner": "mobsfscan",
+  "version": "0.4.5",
+  "scope": "SOURCE_CI_RATCHET_ONLY_RELEASE_HOLD",
+  "frozen": {
+    "app/src/main/AndroidManifest.xml": "9579bcb7d35f13ffafa7e6108c9c6d594daa555e24e3ddefe75483d0a6006595",
+    "app/src/test/java/io/github/aimindseye/sablehealthbridge/BridgeControllerTest.kt": "3c4cb609221403adab5cc4deae592da996546b1ccd025a2634ff77024f9c4082"
+  },
+  "findings": [
+    {
+      "result": {
+        "message": {
+          "text": "Files may contain hardcoded sensitive information like usernames, passwords, keys etc."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "region": {
+                "snippet": {
+                  "text": "key = \"changed\""
+                },
+                "endColumn": 4112,
+                "endLine": 102,
+                "startColumn": 4097,
+                "startLine": 102
+              },
+              "artifactLocation": {
+                "uri": "app/src/test/java/io/github/aimindseye/sablehealthbridge/BridgeControllerTest.kt"
+              }
+            }
+          }
+        ],
+        "properties": {
+          "owasp-mobile": "M9: Reverse Engineering",
+          "masvs": "MSTG-STORAGE-14",
+          "cwe": "CWE-798: Use of Hard-coded Credentials",
+          "reference": "https://github.com/MobSF/owasp-mstg/blob/master/Document/0x05d-Testing-Data-Storage.md#storing-a-key---example"
+        },
+        "ruleId": "android_kotlin_hardcoded"
+      },
+      "review": "Synthetic stale-preview test identifier, not a credential; exact source pinned."
+    },
+    {
+      "result": {
+        "message": {
+          "text": "Activity is found to be vulnerable to StrandHogg 2.0 task hijacking vulnerability. When vulnerable, it is possible for other applications to place a malicious activity on top of the activity stack of the vulnerable application. This makes the application an easy target for phishing attacks. The vulnerability can be remediated by setting the launch mode attribute to \"singleInstance\" and by setting an empty taskAffinity (taskAffinity=\"\"). You can also update the target SDK version (26) of the app to 29 or higher to fix this issue at platform level."
+        },
+        "level": "error",
+        "locations": [
+          {
+            "physicalLocation": {
+              "region": {
+                "snippet": {
+                  "text": "Activity exported, targetSdk<29 and launchMode != singleInstance or taskAffinity is not empty"
+                },
+                "endColumn": 1,
+                "endLine": 1,
+                "startColumn": 1,
+                "startLine": 1
+              },
+              "artifactLocation": {
+                "uri": "app/src/main/AndroidManifest.xml"
+              }
+            }
+          }
+        ],
+        "properties": {
+          "owasp-mobile": "m1",
+          "masvs": "platform-1",
+          "cwe": "cwe-1021",
+          "reference": "https://github.com/OWASP/owasp-mastg/blob/master/Document/0x05a-Platform-Overview.md"
+        },
+        "ruleId": "android_task_hijacking2"
+      },
+      "review": "Scanner assumes SDK below 29; exact source pinned and release APK min/target checked."
+    },
+    {
+      "result": {
+        "message": {
+          "text": "This app does not uses SafetyNet Attestation API that provides cryptographically-signed attestation, assessing the device's integrity. This check helps to ensure that the servers are interacting with the genuine app running on a genuine Android device. "
+        },
+        "level": "note",
+        "locations": [
+          {
+            "physicalLocation": {
+              "region": {
+                "snippet": {
+                  "text": "Missing Best Practice"
+                },
+                "endColumn": 1,
+                "endLine": 1,
+                "startColumn": 1,
+                "startLine": 1
+              },
+              "artifactLocation": {
+                "uri": "."
+              }
+            }
+          }
+        ],
+        "properties": {
+          "owasp-mobile": "M8: Code Tampering",
+          "masvs": "MSTG-RESILIENCE-1",
+          "cwe": "CWE-353: Missing Support for Integrity Check",
+          "reference": "https://github.com/MobSF/owasp-mstg/blob/master/Document/0x05j-Testing-Resiliency-Against-Reverse-Engineering.md#testing-root-detection-mstg-resilience-1"
+        },
+        "ruleId": "android_safetynet"
+      },
+      "review": "Deprecated API; no backend attestation requirement; architecture review."
+    },
+    {
+      "result": {
+        "message": {
+          "text": "This app does not enforce TLS Certificate Transparency which helps to  detect SSL certificates that have been mistakenly issued by a  certificate authority or maliciously acquired from an otherwise  unimpeachable certificate authority."
+        },
+        "level": "note",
+        "locations": [
+          {
+            "physicalLocation": {
+              "region": {
+                "snippet": {
+                  "text": "Missing Best Practice"
+                },
+                "endColumn": 1,
+                "endLine": 1,
+                "startColumn": 1,
+                "startLine": 1
+              },
+              "artifactLocation": {
+                "uri": "."
+              }
+            }
+          }
+        ],
+        "properties": {
+          "owasp-mobile": "M3: Insecure Communication",
+          "masvs": "MSTG-NETWORK-4",
+          "cwe": "CWE-295: Improper Certificate Validation",
+          "reference": "https://github.com/MobSF/owasp-mstg/blob/master/Document/0x05g-Testing-Network-Communication.md#testing-custom-certificate-stores-and-certificate-pinning-mstg-network-4"
+        },
+        "ruleId": "android_certificate_transparency"
+      },
+      "review": "Open compatibility review; not a release approval."
+    },
+    {
+      "result": {
+        "message": {
+          "text": "This app does not have root detection capabilities. Running a sensitive application on a rooted device questions the device integrity and affects users data."
+        },
+        "level": "note",
+        "locations": [
+          {
+            "physicalLocation": {
+              "region": {
+                "snippet": {
+                  "text": "Missing Best Practice"
+                },
+                "endColumn": 1,
+                "endLine": 1,
+                "startColumn": 1,
+                "startLine": 1
+              },
+              "artifactLocation": {
+                "uri": "."
+              }
+            }
+          }
+        ],
+        "properties": {
+          "owasp-mobile": "M8: Code Tampering",
+          "masvs": "MSTG-RESILIENCE-1",
+          "cwe": "CWE-919: Weaknesses in Mobile Applications",
+          "reference": "https://github.com/MobSF/owasp-mstg/blob/master/Document/0x05j-Testing-Resiliency-Against-Reverse-Engineering.md#testing-root-detection-mstg-resilience-1"
+        },
+        "ruleId": "android_root_detection"
+      },
+      "review": "Custom ROM compatibility; root-compromise risk remains."
+    },
+    {
+      "result": {
+        "message": {
+          "text": "This app does not have capabilities to prevent tapjacking attacks."
+        },
+        "level": "note",
+        "locations": [
+          {
+            "physicalLocation": {
+              "region": {
+                "snippet": {
+                  "text": "Missing Best Practice"
+                },
+                "endColumn": 1,
+                "endLine": 1,
+                "startColumn": 1,
+                "startLine": 1
+              },
+              "artifactLocation": {
+                "uri": "."
+              }
+            }
+          }
+        ],
+        "properties": {
+          "owasp-mobile": "M1: Improper Platform Usage",
+          "masvs": "MSTG-PLATFORM-9",
+          "cwe": "CWE-200: Information Exposure",
+          "reference": "https://github.com/MobSF/owasp-mstg/blob/master/Document/0x05h-Testing-Platform-Interaction.md#testing-for-overlay-attacks-mstg-platform-9"
+        },
+        "ruleId": "android_tapjacking"
+      },
+      "review": "Open sensitive-write protection work; not release-approved."
+    },
+    {
+      "result": {
+        "message": {
+          "text": "This app does not have capabilities to prevent against Screenshots from Recent Task History/ Now On Tap etc."
+        },
+        "level": "note",
+        "locations": [
+          {
+            "physicalLocation": {
+              "region": {
+                "snippet": {
+                  "text": "Missing Best Practice"
+                },
+                "endColumn": 1,
+                "endLine": 1,
+                "startColumn": 1,
+                "startLine": 1
+              },
+              "artifactLocation": {
+                "uri": "."
+              }
+            }
+          }
+        ],
+        "properties": {
+          "owasp-mobile": "M2: Insecure Data Storage",
+          "masvs": "MSTG-STORAGE-9",
+          "cwe": "CWE-200: Information Exposure",
+          "reference": "https://github.com/MobSF/owasp-mstg/blob/master/Document/0x05d-Testing-Data-Storage.md#finding-sensitive-information-in-auto-generated-screenshots-mstg-storage-9"
+        },
+        "ruleId": "android_prevent_screenshot"
+      },
+      "review": "Open privacy enhancement; not release-approved."
+    },
+    {
+      "result": {
+        "message": {
+          "text": "This app does not use TLS/SSL certificate or public key pinning to detect or prevent MITM attacks in secure communication channel."
+        },
+        "level": "note",
+        "locations": [
+          {
+            "physicalLocation": {
+              "region": {
+                "snippet": {
+                  "text": "Missing Best Practice"
+                },
+                "endColumn": 1,
+                "endLine": 1,
+                "startColumn": 1,
+                "startLine": 1
+              },
+              "artifactLocation": {
+                "uri": "."
+              }
+            }
+          }
+        ],
+        "properties": {
+          "owasp-mobile": "M3: Insecure Communication",
+          "masvs": "MSTG-NETWORK-4",
+          "cwe": "CWE-295: Improper Certificate Validation",
+          "reference": "https://github.com/MobSF/owasp-mstg/blob/master/Document/0x05g-Testing-Network-Communication.md#testing-custom-certificate-stores-and-certificate-pinning-mstg-network-4"
+        },
+        "ruleId": "android_ssl_pinning"
+      },
+      "review": "Standard platform HTTPS trust retained; architecture review."
+    }
+  ]
+}
