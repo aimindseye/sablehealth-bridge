@@ -20,8 +20,8 @@ android {
         applicationId = "io.github.aimindseye.sablehealthbridge"
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0-sbr2a"
+        versionCode = 3
+        versionName = "0.2.1-sbr2a"
         buildConfigField("String", "SOURCE_REVISION", "\"${sourceRevision.get()}\"")
     }
     buildFeatures {
@@ -74,7 +74,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
     implementation("androidx.work:work-runtime-ktx:2.11.2")
-    implementation("androidx.health.connect:connect-client:1.1.0")
+    implementation("androidx.health.connect:connect-client:1.2.0-alpha06")
     // Security remediation: CVE-2020-8908, CVE-2023-2976, CVE-2026-102554.
     implementation("com.google.guava:guava:33.7.2-android")
     implementation("com.google.android.gms:play-services-auth:22.0.0")
