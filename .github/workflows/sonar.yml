@@ -30,7 +30,7 @@ jobs:
         run: test -n "$SONAR_TOKEN"
       - run: |
           sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
-          "$sdkmanager" 'platforms;android-37' 'build-tools;36.0.0'
+          "$sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0'
           gradle --no-daemon --console=plain :core:test :core:jacocoTestReport :app:createDebugUnitTestCoverageReport :app:assembleDebug :app:lintDebug
           python3 tools/check-coverage.py
       - name: Measure Python helper tests

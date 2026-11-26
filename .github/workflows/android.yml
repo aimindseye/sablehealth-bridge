@@ -25,7 +25,7 @@ jobs:
         run: |
           sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
           test -n "$sdkmanager"
-          "$sdkmanager" 'platforms;android-37' 'build-tools;36.0.0'
+          "$sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0'
       - name: Build and measure
         run: |
           python3 tools/check-contract.py

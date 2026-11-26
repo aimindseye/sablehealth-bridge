@@ -46,7 +46,7 @@ jobs:
           gradle-version: '9.3.1'
       - run: |
           sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
-          "$sdkmanager" 'platforms;android-37' 'build-tools;36.0.0'
+          "$sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0'
           gradle --no-daemon --console=plain --no-build-cache --rerun-tasks :app:assembleDebug
       - uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98
   mobsf:
@@ -73,7 +73,7 @@ jobs:
         run: |
           sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
           test -n "$sdkmanager"
-          "$sdkmanager" 'platforms;android-37' 'build-tools;36.0.0'
+          "$sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0'
           gradle --no-daemon --console=plain :app:assembleRelease
           apk=app/build/outputs/apk/release/app-release-unsigned.apk
           test -s "$apk"

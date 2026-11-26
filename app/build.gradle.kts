@@ -14,7 +14,9 @@ val sourceRevision =
         .map { it.trim().takeIf { s -> s.matches(Regex("[a-f0-9]{12}")) } ?: "uncommitted" }
 android {
     namespace = "io.github.aimindseye.sablehealthbridge"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) { minorApiLevel = 0 }
+    }
     defaultConfig {
         applicationId = "io.github.aimindseye.sablehealthbridge"
         minSdk = 30

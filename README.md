@@ -54,7 +54,7 @@ CI are mandatory owner-side checks, not claimed to have passed here.
 ## R11 toolchain and security qualification
 
 AGP 9.1.1, Gradle 9.3.1 (distribution SHA-256 pinned), Kotlin 2.3.21,
-compile SDK 37, target SDK 36, min SDK 30, JDK 21. The existing audited
+compile SDK 37.0, target SDK 36, min SDK 30, JDK 21. The existing audited
 Gradle 8.13 wrapper launcher/JAR is retained only as the bootstrap for the
 pinned distribution; do not replace it with an unverified binary. Android
 uses AGP built-in Kotlin; the core JVM module retains its Kotlin JVM plugin.
