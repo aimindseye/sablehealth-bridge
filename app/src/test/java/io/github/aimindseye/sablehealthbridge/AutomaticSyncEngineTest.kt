@@ -21,8 +21,17 @@ internal fun syncFixture(): SleepSession {
     val stages = listOf(Stage(syncFixtureStart, syncFixtureEnd, StageType.LIGHT))
     val source =
         SourceSleepInfo(
-            "STAGES", "SUCCEEDED", true, true, false, false,
-            syncFixtureStart, syncFixtureEnd, null, stages, listOf("LIGHT"),
+            "STAGES",
+            "SUCCEEDED",
+            true,
+            true,
+            false,
+            false,
+            syncFixtureStart,
+            syncFixtureEnd,
+            null,
+            stages,
+            listOf("LIGHT"),
         )
     return SleepSession(
         sessionKey("fixture/automatic", syncFixtureStart, syncFixtureEnd),
@@ -76,6 +85,12 @@ class AutomaticSyncEngineTest {
             check(runAutomaticSync(syncConsent(), ports, syncFixtureEnd).status == SyncStatus.PERMISSION_REQUIRED)
             ports.stop = SecurityException()
             check(runAutomaticSync(syncConsent(), ports, syncFixtureEnd).status == SyncStatus.PERMISSION_REQUIRED)
+            ports.stop = Hold("API HTTP 401")
+            check(runAutomaticSync(syncConsent(), ports, syncFixtureEnd).status == SyncStatus.AUTH_REQUIRED)
+            ports.stop = Hold("API HTTP 403")
+            check(runAutomaticSync(syncConsent(), ports, syncFixtureEnd).status == SyncStatus.AUTH_REQUIRED)
+            ports.stop = Hold("Other API error")
+            check(runAutomaticSync(syncConsent(), ports, syncFixtureEnd).status == SyncStatus.FAILED)
             ports.stop = IllegalStateException()
             check(runAutomaticSync(syncConsent(), ports, syncFixtureEnd).status == SyncStatus.FAILED)
             check(ports.reads == 0 && ports.calls == 0)

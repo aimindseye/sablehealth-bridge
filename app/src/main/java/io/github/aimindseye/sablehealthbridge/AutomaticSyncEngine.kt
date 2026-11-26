@@ -59,6 +59,7 @@ internal suspend fun runAutomaticSync(
         ports.guard(consent)
         val access = silentAccess(ports.authorize())
         if (ports.identity(access, consent.salt) != consent.binding) throw SyncHalt(SyncStatus.ACCOUNT_CHANGED)
+        ports.guard(consent)
         val batch = ports.batch(access, consent.initial)
         report = report.copy(held = batch.heldCount)
         for (session in batch.sessions) {
@@ -74,6 +75,13 @@ internal suspend fun runAutomaticSync(
         report = report.copy(status = SyncStatus.AUTH_REQUIRED)
     } catch (_: SecurityException) {
         report = report.copy(status = SyncStatus.PERMISSION_REQUIRED)
+    } catch (failure: Hold) {
+        val status = if (failure.label.startsWith("API HTTP 401") || failure.label.startsWith("API HTTP 403")) {
+            SyncStatus.AUTH_REQUIRED
+        } else {
+            SyncStatus.FAILED
+        }
+        report = report.copy(status = status)
     } catch (_: Exception) {
         report = report.copy(status = SyncStatus.FAILED)
     }

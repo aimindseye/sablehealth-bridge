@@ -9,6 +9,7 @@ import com.google.android.gms.tasks.Tasks
 import io.github.aimindseye.sablehealthbridge.core.Decision
 import io.github.aimindseye.sablehealthbridge.core.SleepSession
 import io.github.aimindseye.sablehealthbridge.core.SyncJournalState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -55,7 +56,8 @@ internal suspend fun executeSyncWork(
     val consent = settings.current()
     if (consent == null || consent.generation != generation) return SyncReport(SyncStatus.OFF)
     settings.record(consent, settings.report().copy(status = SyncStatus.RUNNING))
-    val report = runAutomaticSync(consent, ports(consent), now).copy(finishedAt = now.toEpochMilli())
+    val result = runAutomaticSync(consent, ports(consent), now)
+    val report = result.copy(finishedAt = Instant.now().toEpochMilli())
     settings.record(consent, report)
     return report
 }
@@ -101,9 +103,19 @@ private class AndroidAutomaticSyncPorts(
     override fun confirm(session: SleepSession) = ledger.confirm(session)
 
     override suspend fun insert(session: SleepSession, decision: Decision): Boolean =
-        health.insertAutomatically(session, decision) {
-            guard(consent)
-            ledger.reserve(session)
-            guard(consent)
+        try {
+            health.insertAutomatically(session, decision) {
+                guard(consent)
+                ledger.reserve(session)
+                guard(consent)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (stop: SyncHalt) {
+            throw stop
+        } catch (denied: SecurityException) {
+            throw denied
+        } catch (_: Exception) {
+            throw SyncHalt(SyncStatus.WRITE_UNCERTAIN)
         }
 }

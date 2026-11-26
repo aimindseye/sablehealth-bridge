@@ -16,6 +16,8 @@ import io.github.aimindseye.sablehealthbridge.core.Stage
 import io.github.aimindseye.sablehealthbridge.core.StageType
 import io.github.aimindseye.sablehealthbridge.core.confirmedDecision
 import io.github.aimindseye.sablehealthbridge.core.decide
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Duration
@@ -105,7 +107,7 @@ internal class ConnectSleep(
         }
         requireAccess()
         reserve()
-        requireAccess()
+        currentCoroutineContext().ensureActive()
         store.insert(toRecord(session, fresh.version))
         inspect(session).action == Action.ALREADY_IMPORTED
     }

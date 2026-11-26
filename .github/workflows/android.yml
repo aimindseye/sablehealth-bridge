@@ -45,6 +45,17 @@ jobs:
           "$aapt" dump xmltree "$apk" AndroidManifest.xml > build/r11-evidence/apk-manifest.txt
           sha256sum "$apk" > build/r11-evidence/APK_SHA256.txt
           git rev-parse HEAD > build/r11-evidence/SOURCE_COMMIT.txt
+      - name: Collect actual ktlint formatter patch on failure
+        if: failure()
+        run: |
+          if find app/build/reports/ktlint core/build/reports/ktlint -name '*.txt' -size +0c -print 2>/dev/null | grep -q .; then
+            mkdir -p build/r11-evidence
+            status=0
+            gradle --no-daemon --no-build-cache --console=plain --continue ktlintFormat || status=$?
+            git diff --check
+            git diff -- '*.kt' '*.kts' > build/r11-evidence/ktlint-format.patch
+            exit "$status"
+          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

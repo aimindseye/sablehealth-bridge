@@ -24,6 +24,7 @@ class SyncSettingsTest {
         val complete = SyncReport(SyncStatus.COMPLETE, 1, 2, 3, 123)
         settings.record(first, complete)
         check(settings.report() == complete && settings.current()?.initial == false)
+        check(settings.history() == listOf(complete))
         settings.record(first, complete.copy(status = SyncStatus.AUTH_REQUIRED))
         check(settings.current() == null && settings.report().status == SyncStatus.AUTH_REQUIRED)
         check(runCatching { settings.enable(salt, "b".repeat(64), 30) }.exceptionOrNull() is SyncHalt)
@@ -51,6 +52,15 @@ class SyncSettingsTest {
         settings.stop()
         check(ledger.state(session) == SyncJournalState.PREVIOUSLY_CONFIRMED)
         check(runCatching { ledger.state(session.copy(key = "invalid")) }.isFailure)
+    }
+
+    @Test
+    fun boundedHistoryRejectsMalformedRowsAndKeepsNewestFirst() {
+        val rows = (1L..8L).map { SyncReport(SyncStatus.COMPLETE, 1, 2, 3, it) }
+        val encoded = rows.fold("") { raw, report -> appendSyncHistory(parseSyncHistory(raw), report) }
+        check(parseSyncHistory(encoded) == rows.takeLast(5).reversed())
+        check(parseSyncHistory("bad\nCOMPLETE|0|1|2|3\nCOMPLETE|1|-1|2|3").isEmpty())
+        check(parseSyncHistory("COMPLETE|1|0|2|3").single().held == 3)
     }
 
     @Test

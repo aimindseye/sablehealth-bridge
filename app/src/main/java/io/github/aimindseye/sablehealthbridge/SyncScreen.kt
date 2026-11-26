@@ -51,7 +51,10 @@ internal fun SyncScreen(
                 Text("Sable Health Bridge", style = MaterialTheme.typography.titleMedium)
                 TextButton(onClick = actions.about) { Text("About") }
             }
-            Text(if (state.enabled) "Automatic sync on" else "Automatic sync off", style = MaterialTheme.typography.titleSmall)
+            Text(
+                if (state.enabled) "Automatic sync on" else "Automatic sync off",
+                style = MaterialTheme.typography.titleSmall,
+            )
             Text(syncStatusLabel(state.notice ?: state.report.status), Modifier.testTag("sync-status"))
             SyncCounts(state.report)
             SyncInterval(state, actions.interval)
@@ -70,6 +73,7 @@ internal fun SyncScreen(
                 enabled = !state.busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("sync-manual"),
             ) { Text("Manual preview / import") }
+            SyncHistoryPanel(state.history)
         }
     }
     if (confirm) {
@@ -90,8 +94,27 @@ private fun SyncCounts(report: SyncReport) {
         Text("Verified\n${report.verified}", style = MaterialTheme.typography.bodyMedium)
         Text("Held\n${report.held}", style = MaterialTheme.typography.bodyMedium)
     }
-    val last = if (report.finishedAt > 0) DateFormat.getDateTimeInstance().format(Date(report.finishedAt)) else "Not yet"
-    Text("Last run: $last", style = MaterialTheme.typography.labelSmall)
+    Text("Last run: ${syncRunTime(report)}", style = MaterialTheme.typography.labelSmall)
+}
+
+private fun syncRunTime(report: SyncReport): String =
+    if (report.finishedAt > 0) DateFormat.getDateTimeInstance().format(Date(report.finishedAt)) else "Not yet"
+
+@Composable
+private fun SyncHistoryPanel(history: List<SyncReport>) {
+    var expanded by remember { mutableStateOf(false) }
+    if (history.isNotEmpty()) {
+        TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide history" else "Sync history") }
+        if (expanded) {
+            history.forEach { report ->
+                Text(syncRunTime(report), style = MaterialTheme.typography.labelMedium)
+                Text(
+                    "${syncStatusLabel(report.status)} · ${report.imported} imported · ${report.held} held",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
 }
 
 @Composable

@@ -17,6 +17,7 @@ internal data class SyncUiState(
     val report: SyncReport = SyncReport(),
     val busy: Boolean = false,
     val notice: SyncStatus? = null,
+    val history: List<SyncReport> = emptyList(),
 )
 
 internal class SyncCoordinator(
@@ -51,13 +52,15 @@ internal class SyncCoordinator(
     }
 
     fun disable() {
-        if (state.enabled) {
+        if (state.enabled && !state.busy) {
+            state = state.copy(busy = true, notice = null)
             runCatching { settings.stop() }
                 .onSuccess {
                     refresh()
                     activity.lifecycleScope.launch {
                         try {
                             scheduler.cancel()
+                            state = state.copy(busy = false)
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (_: Exception) {
@@ -77,6 +80,7 @@ internal class SyncCoordinator(
 
     private fun accept(grant: ProbeAuthorization) {
         if (!state.busy || state.enabled) return
+        val minutes = state.minutes
         activity.lifecycleScope.launch {
             try {
                 val consent =
@@ -84,7 +88,7 @@ internal class SyncCoordinator(
                         val access = silentAccess(grant)
                         val salt = settings.salt()
                         val binding = readAccountBinding(access, salt)
-                        settings.enable(salt, binding, state.minutes)
+                        settings.enable(salt, binding, minutes)
                     }
                 state = state.copy(busy = false)
                 refresh()
@@ -124,6 +128,7 @@ internal class SyncCoordinator(
                 enabled = consent != null,
                 minutes = consent?.minutes ?: state.minutes,
                 report = settings.report(),
+                history = settings.history(),
             )
     }
 

@@ -1,5 +1,6 @@
 package io.github.aimindseye.sablehealthbridge
 
+import android.app.Activity
 import androidx.activity.ComponentActivity
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,7 +17,7 @@ internal class SyncAuthorization(
     private val auth by lazy { Identity.getAuthorizationClient(activity) }
     private val consent =
         activity.registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-            if (result.resultCode == ComponentActivity.RESULT_OK) {
+            if (result.resultCode == Activity.RESULT_OK) {
                 runCatching { auth.getAuthorizationResultFromIntent(requireNotNull(result.data)) }
                     .onSuccess(::resolve)
                     .onFailure { failed(SyncStatus.AUTH_REQUIRED) }

@@ -6,7 +6,9 @@ import java.util.UUID
 
 internal const val SYNC_PREFERENCES = "sbr_auto_sync"
 internal const val DEFAULT_SYNC_MINUTES = 30
-internal val syncIntervals = listOf(15, DEFAULT_SYNC_MINUTES, 60)
+private const val MIN_SYNC_MINUTES = 15
+private const val MAX_SYNC_MINUTES = 60
+internal val syncIntervals = listOf(MIN_SYNC_MINUTES, DEFAULT_SYNC_MINUTES, MAX_SYNC_MINUTES)
 private val settingsLock = Any()
 
 internal fun syncPreferences(context: Context): SharedPreferences =
@@ -22,7 +24,8 @@ internal class SyncSettings(
             val salt = prefs.getString("salt", null)
             val binding = prefs.getString("binding", null)
             val minutes = prefs.getInt("minutes", DEFAULT_SYNC_MINUTES)
-            if (generation.isNullOrBlank() || salt.isNullOrBlank() || binding.isNullOrBlank() ||
+            if (
+                generation.isNullOrBlank() || salt.isNullOrBlank() || binding.isNullOrBlank() ||
                 minutes !in syncIntervals
             ) {
                 null
@@ -77,6 +80,8 @@ internal class SyncSettings(
             )
         }
 
+    fun history(): List<SyncReport> = parseSyncHistory(prefs.getString("history", "").orEmpty())
+
     fun record(
         consent: SyncConsent,
         report: SyncReport,
@@ -91,6 +96,9 @@ internal class SyncSettings(
                 editor.putLong("finished", report.finishedAt)
                 if (report.status == SyncStatus.COMPLETE) editor.putBoolean("initial_complete", true)
                 if (report.status in pauseStatuses) editor.remove("generation")
+                if (report.finishedAt > 0 && report.status != SyncStatus.RUNNING) {
+                    editor.putString("history", appendSyncHistory(history(), report))
+                }
                 check(editor.commit())
             }
         }

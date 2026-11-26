@@ -85,10 +85,7 @@ internal fun BridgeScreen(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 SessionControls(state, actions)
-                state.preview?.let {
-                    Text(actionLabel(it.decision.action), style = MaterialTheme.typography.labelMedium)
-                    SleepCard(it)
-                }
+                state.preview?.let { SleepCard(it) }
                 SchemaDiagnostics(state.diagnostics)
             }
             val item = state.preview
