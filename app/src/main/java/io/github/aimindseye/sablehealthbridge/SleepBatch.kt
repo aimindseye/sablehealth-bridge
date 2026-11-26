@@ -84,8 +84,8 @@ private fun pointBounds(point: JSONObject): SourceBounds? =
 private fun safeParse(
     point: JSONObject,
     now: Instant,
-): SleepSession? {
-    return try {
+): SleepSession? =
+    try {
         parseSleep(point, now)
     } catch (_: Hold) {
         null
@@ -94,7 +94,6 @@ private fun safeParse(
     } catch (_: DateTimeParseException) {
         null
     }
-}
 
 private fun eligibleSessions(parsed: List<ParsedPoint>): List<SleepSession> =
     parsed.mapNotNull { item ->

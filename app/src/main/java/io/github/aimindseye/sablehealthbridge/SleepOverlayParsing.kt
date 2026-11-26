@@ -48,13 +48,12 @@ internal fun applySleepOverlays(
 private fun checkedNormalize(
     primary: SleepSession,
     overlays: List<Stage>,
-): List<Stage> {
-    return try {
+): List<Stage> =
+    try {
         normalizeOverlays(primary, overlays)
     } catch (_: IllegalArgumentException) {
         throw Hold("Invalid sleep overlay bounds or stage limit; no import")
     }
-}
 
 private fun overlayStages(
     sleep: JSONObject,

@@ -35,4 +35,9 @@ private fun parseStageSummary(item: JSONObject): SourceStageSummary =
 private fun sourceNumber(
     item: JSONObject,
     field: String,
-): Long? = item.opt(field)?.toString()?.toLongOrNull()?.takeIf { it >= 0 }
+): Long? =
+    item
+        .opt(field)
+        ?.toString()
+        ?.toLongOrNull()
+        ?.takeIf { it >= 0 }
