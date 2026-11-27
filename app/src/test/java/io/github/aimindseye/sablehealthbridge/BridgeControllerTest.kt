@@ -99,7 +99,7 @@ class BridgeControllerTest {
     fun staleGoogleAndNonWritablePreviewNeverWrite() {
         connect()
         controller.preview()
-        service.session = service.session.copy(key = "changed")
+        service.session = service.session.copy(key = service.session.key + "-changed")
         controller.applyPreview()
         check(controller.screen.message.contains("changed"))
         check(service.writes == 0)
@@ -150,11 +150,42 @@ class BridgeControllerTest {
         check(!controller.screen.connected)
     }
 
+    @Test
+    fun chooseAnotherSessionAndRecheckSelectedKeyBeforeWrite() {
+        connect()
+        val second = service.session.copy(key = service.session.key + "-second")
+        service.extra = listOf(second)
+        controller.preview()
+        check(controller.screen.sessionCount == 2 && controller.screen.sessionIndex == 0)
+        controller.selectRelative(1)
+        check(controller.screen.preview?.session == second)
+        controller.selectRelative(1)
+        check(controller.screen.preview?.session == service.session)
+        controller.selectRelative(-1)
+        check(controller.screen.preview?.session == second)
+        controller.applyPreview()
+        check(service.writes == 1)
+        controller.forget()
+        check(controller.screen.sessionCount == 0 && controller.screen.diagnostics.isEmpty())
+    }
+
+    @Test
+    fun vanishedSelectedRecordCannotWrite() {
+        connect()
+        service.extra = listOf(service.session.copy(key = service.session.key + "-second"))
+        controller.preview()
+        controller.selectRelative(1)
+        service.extra = emptyList()
+        controller.applyPreview()
+        check(service.writes == 0 && controller.screen.message.contains("changed"))
+    }
+
     private fun connect() = controller.acceptAuthorization(listOf(SLEEP_SCOPE), "fixture-token")
 }
 
 private class TestServices : BridgeServices {
     var session = testSleep()
+    var extra = emptyList<SleepSession>()
     var decision = Decision(Action.INSERT)
     var authorizations = 0
     var permissionCalls = 0
@@ -178,16 +209,16 @@ private class TestServices : BridgeServices {
         failure?.let { throw it }
     }
 
-    override suspend fun latest(access: String): SleepSession {
+    override suspend fun batch(access: String): SleepBatch {
         check(access == "fixture-token")
         reads++
         pending?.await()
         failure?.let { throw it }
-        return session
+        return SleepBatch(listOf(session) + extra, diagnostics = "sanitized fixture")
     }
 
     override suspend fun inspect(session: SleepSession): Decision {
-        check(session == this.session)
+        check(session == this.session || session in extra)
         inspections++
         return decision
     }
@@ -196,7 +227,7 @@ private class TestServices : BridgeServices {
         session: SleepSession,
         decision: Decision,
     ): String {
-        check(session == this.session && decision == this.decision)
+        check((session == this.session || session in extra) && decision == this.decision)
         writes++
         writeFailure?.let { throw it }
         return "Imported and verified"

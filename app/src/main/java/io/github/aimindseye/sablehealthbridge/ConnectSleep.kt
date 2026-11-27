@@ -16,6 +16,10 @@ import io.github.aimindseye.sablehealthbridge.core.Stage
 import io.github.aimindseye.sablehealthbridge.core.StageType
 import io.github.aimindseye.sablehealthbridge.core.confirmedDecision
 import io.github.aimindseye.sablehealthbridge.core.decide
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 import java.time.Instant
 
@@ -27,6 +31,7 @@ internal val SLEEP_PERMISSIONS =
 
 private const val HISTORY_DAYS = 7L
 private const val MAX_HEALTH_PAGES = 30
+private val sleepWriteLock = Mutex()
 
 internal data class SleepPage(
     val records: List<ExistingSleep>,
@@ -71,24 +76,44 @@ internal class ConnectSleep(
     suspend fun apply(
         session: SleepSession,
         preview: Decision,
-    ): String {
-        requireAccess()
-        val fresh = decide(session, existing(store, session))
-        if (!confirmedDecision(preview, fresh)) throw Hold("Health Connect changed; preview again")
-        requireAccess()
-        when (fresh.action) {
-            Action.INSERT, Action.UPDATE -> store.insert(toRecord(session, fresh.version))
-            Action.REMOVE_OWN_DUPLICATE -> store.delete(requireNotNull(fresh.ownId))
-            else -> throw Hold("No eligible change")
+    ): String =
+        sleepWriteLock.withLock {
+            requireAccess()
+            val fresh = decide(session, existing(store, session))
+            if (!confirmedDecision(preview, fresh)) throw Hold("Health Connect changed; preview again")
+            requireAccess()
+            when (fresh.action) {
+                Action.INSERT, Action.UPDATE -> store.insert(toRecord(session, fresh.version))
+                Action.REMOVE_OWN_DUPLICATE -> store.delete(requireNotNull(fresh.ownId))
+                else -> throw Hold("No eligible change")
+            }
+            // No blind retries: an interrupted IPC may already have committed.
+            val verified = inspect(session).action
+            when (verified) {
+                Action.ALREADY_IMPORTED -> "Imported and verified"
+                Action.EXTERNAL_MATCH -> "External sleep verified; Bridge copy absent"
+                else -> "Change submitted; review Health Connect before retrying"
+            }
         }
-        // No blind retries: an interrupted IPC may already have committed.
-        val verified = inspect(session).action
-        return when (verified) {
-            Action.ALREADY_IMPORTED -> "Imported and verified"
-            Action.EXTERNAL_MATCH -> "External sleep verified; Bridge copy absent"
-            else -> "Change submitted; review Health Connect before retrying"
+
+    /** A separate insert-only boundary. Never calls the manual update/delete path. */
+    suspend fun insertAutomatically(
+        session: SleepSession,
+        preview: Decision,
+        reserve: suspend () -> Unit,
+    ): Boolean =
+        sleepWriteLock.withLock {
+            requireAccess()
+            val fresh = decide(session, existing(store, session))
+            if (fresh.action != Action.INSERT || !confirmedDecision(preview, fresh)) {
+                throw Hold("Health Connect changed; no automatic import")
+            }
+            requireAccess()
+            reserve()
+            currentCoroutineContext().ensureActive()
+            store.insert(toRecord(session, fresh.version))
+            inspect(session).action == Action.ALREADY_IMPORTED
         }
-    }
 }
 
 private const val HEALTH_PAGE_SIZE = 100
@@ -175,12 +200,7 @@ internal fun toRecord(
         startZoneOffset = session.startOffset,
         endTime = session.end,
         endZoneOffset = session.endOffset,
-        metadata =
-            Metadata.autoRecorded(
-                device = Device(type = Device.TYPE_WATCH),
-                clientRecordId = session.key,
-                clientRecordVersion = version,
-            ),
+        metadata = sourceMetadata(session, version),
         title = "Google wearable sleep via Sable Health Bridge",
         stages = session.stages.map { SleepSessionRecord.Stage(it.start, it.end, healthStage(it.type)) },
     )
@@ -191,6 +211,10 @@ private fun healthStage(stage: StageType): Int =
         StageType.LIGHT -> SleepSessionRecord.STAGE_TYPE_LIGHT
         StageType.DEEP -> SleepSessionRecord.STAGE_TYPE_DEEP
         StageType.REM -> SleepSessionRecord.STAGE_TYPE_REM
+        StageType.OUT_OF_BED -> SleepSessionRecord.STAGE_TYPE_OUT_OF_BED
+        StageType.ASLEEP -> SleepSessionRecord.STAGE_TYPE_SLEEPING
+        StageType.UNKNOWN -> SleepSessionRecord.STAGE_TYPE_UNKNOWN
+        StageType.AWAKE_IN_BED -> SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED
     }
 
 private fun fromHealthStage(stage: Int): StageType? =
@@ -199,5 +223,41 @@ private fun fromHealthStage(stage: Int): StageType? =
         SleepSessionRecord.STAGE_TYPE_LIGHT -> StageType.LIGHT
         SleepSessionRecord.STAGE_TYPE_DEEP -> StageType.DEEP
         SleepSessionRecord.STAGE_TYPE_REM -> StageType.REM
+        SleepSessionRecord.STAGE_TYPE_OUT_OF_BED -> StageType.OUT_OF_BED
+        SleepSessionRecord.STAGE_TYPE_SLEEPING -> StageType.ASLEEP
+        SleepSessionRecord.STAGE_TYPE_UNKNOWN -> StageType.UNKNOWN
+        SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED -> StageType.AWAKE_IN_BED
         else -> null
     }
+
+private fun sourceMetadata(
+    session: SleepSession,
+    version: Long,
+): Metadata {
+    val type =
+        when (session.sourceInfo?.formFactor) {
+            "FITNESS_BAND" -> Device.TYPE_FITNESS_BAND
+            "WATCH" -> Device.TYPE_WATCH
+            "PHONE" -> Device.TYPE_PHONE
+            "CHEST_STRAP" -> Device.TYPE_CHEST_STRAP
+            "SCALE" -> Device.TYPE_SCALE
+            else -> Device.TYPE_UNKNOWN
+        }
+    val device = Device(type = type)
+    return when (session.sourceInfo?.recordingMethod) {
+        "PASSIVELY_MEASURED" ->
+            Metadata.autoRecorded(
+                device = device,
+                clientRecordId = session.key,
+                clientRecordVersion = version,
+            )
+        "ACTIVELY_MEASURED" ->
+            Metadata.activelyRecorded(
+                device = device,
+                clientRecordId = session.key,
+                clientRecordVersion = version,
+            )
+        "MANUAL" -> Metadata.manualEntry(session.key, version, device)
+        else -> Metadata.unknownRecordingMethod(session.key, version, device)
+    }
+}

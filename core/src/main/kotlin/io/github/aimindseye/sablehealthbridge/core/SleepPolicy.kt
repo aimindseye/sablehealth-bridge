@@ -8,17 +8,26 @@ import java.time.ZoneOffset
 const val BRIDGE_PACKAGE = "io.github.aimindseye.sablehealthbridge"
 const val SLEEP_SCOPE = "https://www.googleapis.com/auth/googlehealth.sleep.readonly"
 
-private const val SECONDS_PER_MINUTE = 60
 private const val BYTE_MASK = 255
 private const val MAX_SESSION_HOURS = 24L
-private const val MAX_STAGES = 20000
+internal const val MAX_STAGES = 20000
 
-enum class StageType { AWAKE, LIGHT, DEEP, REM }
+enum class StageType { AWAKE, LIGHT, DEEP, REM, OUT_OF_BED, ASLEEP, UNKNOWN, AWAKE_IN_BED }
 
 data class Stage(
     val start: Instant,
     val end: Instant,
     val type: StageType,
+)
+
+data class OverlayInfo(
+    val shortAwakenings: Int,
+    val outOfBedSegments: Int,
+    val primaryAsleepMinutes: Long,
+    val reportedAsleepMinutes: Long?,
+    val reportedAwakeMinutes: Long?,
+    val unexpectedAwakeningTypes: Int = 0,
+    val shortAwakeningMinutes: Long = 0,
 )
 
 data class SleepSession(
@@ -28,20 +37,23 @@ data class SleepSession(
     val startOffset: ZoneOffset?,
     val endOffset: ZoneOffset?,
     val stages: List<Stage>,
+    val overlayInfo: OverlayInfo? = null,
+    val sourceInfo: SourceSleepInfo? = null,
 ) {
-    fun minutes(type: StageType): Long {
-        val seconds =
-            stages
-                .filter { it.type == type }
-                .sumOf { Duration.between(it.start, it.end).seconds }
-        return seconds / SECONDS_PER_MINUTE
-    }
+    fun minutes(type: StageType): Long = totalMinutes(stages.filter { it.type == type })
 
-    fun asleepMinutes(): Long =
-        stages
-            .filter { it.type != StageType.AWAKE }
-            .sumOf { Duration.between(it.start, it.end).seconds } / SECONDS_PER_MINUTE
+    fun asleepMinutes(): Long {
+        val asleep = stages.filter { it.type in asleepStageTypes }
+        return totalMinutes(asleep)
+    }
 }
+
+private val asleepStageTypes = setOf(StageType.LIGHT, StageType.DEEP, StageType.REM, StageType.ASLEEP)
+
+private fun totalMinutes(stages: List<Stage>): Long =
+    stages
+        .fold(Duration.ZERO) { total, stage -> total.plus(Duration.between(stage.start, stage.end)) }
+        .toMinutes()
 
 fun sessionKey(
     sourceName: String,
@@ -60,12 +72,9 @@ fun validSession(
     session.start < session.end &&
         session.end <= now &&
         Duration.between(session.start, session.end) <= Duration.ofHours(MAX_SESSION_HOURS) &&
-        session.stages.isNotEmpty() &&
         session.stages.size <= MAX_STAGES &&
-        session.stages.first().start == session.start &&
-        session.stages.last().end == session.end &&
-        session.stages.all { it.start < it.end } &&
-        session.stages.zipWithNext().all { (a, b) -> a.end == b.start }
+        session.stages.all { it.start >= session.start && it.end <= session.end && it.start < it.end } &&
+        session.stages.zipWithNext().all { (a, b) -> a.end <= b.start }
 
 fun scopeAccepted(
     scopes: Collection<String>,
@@ -141,12 +150,21 @@ private fun decideOwned(
     foreign: List<ExistingSleep>,
 ): Decision =
     when {
-        previous.start != session.start || previous.end != session.end -> Decision(Action.CONFLICT)
+        changedBounds(session, previous) && !explicitSourceEdit(session) -> Decision(Action.CONFLICT)
         foreign.isNotEmpty() -> decideDuplicate(session, previous, foreign)
         previous.matches(session) -> Decision(Action.ALREADY_IMPORTED)
+        previous.stages.orEmpty().isNotEmpty() && session.stages.isEmpty() -> Decision(Action.CONFLICT)
         previous.version < 0 || previous.version == Long.MAX_VALUE -> Decision(Action.CONFLICT)
         else -> Decision(Action.UPDATE, previous.id, previous.version + 1)
     }
+
+private fun explicitSourceEdit(session: SleepSession): Boolean =
+    session.sourceInfo?.let { it.manuallyEdited && it.updatedAt != null } == true
+
+private fun changedBounds(
+    session: SleepSession,
+    previous: ExistingSleep,
+): Boolean = previous.start != session.start || previous.end != session.end
 
 private fun decideDuplicate(
     session: SleepSession,

@@ -101,6 +101,34 @@ class ConnectSleepTest {
             check(store.inserts == 2)
         }
 
+    @Test
+    fun automaticInsertReservesAndVerifiesButNeverUpdatesOrDeletes() =
+        runBlocking {
+            var reservations = 0
+            val preview = bridge.inspect(session)
+            check(bridge.insertAutomatically(session, preview) { reservations++ })
+            check(store.inserts == 1 && reservations == 1 && store.deletes.isEmpty())
+            val repeated = runCatching { bridge.insertAutomatically(session, preview) { reservations++ } }
+            check(repeated.exceptionOrNull() is Hold && reservations == 1)
+            val changed = session.copy(stages = session.stages.map { it.copy(type = StageType.DEEP) })
+            val update = bridge.inspect(changed)
+            check(update.action == Action.UPDATE)
+            check(runCatching { bridge.insertAutomatically(changed, update) {} }.exceptionOrNull() is Hold)
+            check(store.inserts == 1 && store.deletes.isEmpty())
+        }
+
+    @Test
+    fun automaticReservationFailurePreventsWriteAndUnverifiedWriteIsReported() =
+        runBlocking {
+            val preview = bridge.inspect(session)
+            val failure = runCatching { bridge.insertAutomatically(session, preview) { error("reservation failed") } }
+            check(failure.isFailure)
+            check(store.inserts == 0)
+            store.persist = false
+            check(!bridge.insertAutomatically(session, preview) {})
+            check(store.inserts == 1)
+        }
+
     private fun external(): ExistingSleep =
         ExistingSleep(
             "foreign",

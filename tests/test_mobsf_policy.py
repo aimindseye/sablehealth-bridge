@@ -21,7 +21,16 @@ class PolicyTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.baseline = json.loads((ROOT / 'config/mobsf-known-findings.json').read_text())
-        self.report = json.loads((ROOT / 'tests/fixtures/sbr1-mobsf-pr1.sarif').read_text())
+        self.historical = json.loads((ROOT / 'tests/fixtures/sbr1-mobsf-pr1.sarif').read_text())
+        # Project the expected post-remediation shape from the unmodified historical fixture.
+        # This is a test fixture, not fresh scan evidence; CI must independently prove equality.
+        self.report = copy.deepcopy(self.historical)
+        rows = self.report['runs'][0]['results']
+        retired = [row for row in rows if row['ruleId'] == 'android_kotlin_hardcoded']
+        self.assertEqual(len(retired), 1)
+        self.assertEqual(retired[0]['locations'][0]['physicalLocation']['region']['snippet']['text'],
+                         'key = "changed"')
+        rows.remove(retired[0])
         for name in self.baseline['frozen']:
             p = self.root / name
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -52,7 +61,7 @@ class PolicyTests(unittest.TestCase):
             elif mode == 'snippet':
                 rows[0]['locations'][0]['physicalLocation']['region']['snippet']['text'] = 'changed'
             elif mode == 'severity':
-                rows[0]['level'] = 'error'
+                rows[0]['level'] = 'warning' if rows[0].get('level') == 'error' else 'error'
             elif mode == 'path':
                 rows[0]['locations'][0]['physicalLocation']['artifactLocation']['uri'] = 'other.kt'
             else:
@@ -93,10 +102,19 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(mode=mode), self.assertRaises(ValueError):
                 self.verify()
 
-    def test_source_drift(self):
-        (self.root / next(iter(self.baseline['frozen']))).write_text('modified')
+    def test_retired_finding_rejected(self):
+        self.report = copy.deepcopy(self.historical)
         with self.assertRaises(ValueError):
             self.verify()
+
+    def test_source_drift(self):
+        for name in self.baseline['frozen']:
+            source = self.root / name
+            original = source.read_bytes()
+            source.write_text('modified')
+            with self.subTest(source=name), self.assertRaises(ValueError):
+                self.verify()
+            source.write_bytes(original)
 
     def test_cli_success_and_failure(self):
         (self.root / 'config').mkdir()

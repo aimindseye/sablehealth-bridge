@@ -4,24 +4,25 @@ import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneOffset
 
-internal fun endTime(point: JSONObject): Instant {
-    val interval = point.getJSONObject("sleep").getJSONObject("interval")
-    return Instant.parse(interval.getString("endTime"))
-}
+internal fun sleepInterval(point: JSONObject): JSONObject = point.getJSONObject("sleep").getJSONObject("interval")
 
-internal fun hasOverlays(
-    sleep: JSONObject,
-    name: String,
-): Boolean {
-    val present = sleep.has(name)
-    return present && sleep.getJSONArray(name).length() > 0
-}
+internal fun endTime(point: JSONObject): Instant = Instant.parse(sleepInterval(point).getString("endTime"))
+
+private val OFFSET_PATTERN = Regex("-?[0-9]{1,5}(\\.[0-9]{1,9})?s")
 
 internal fun offset(
     interval: JSONObject,
     name: String,
 ): ZoneOffset? {
-    if (!interval.has(name)) return null
-    val seconds = interval.getString(name).removeSuffix("s").toInt()
-    return ZoneOffset.ofTotalSeconds(seconds)
+    val raw = (interval.opt(name) as? String)?.takeIf(OFFSET_PATTERN::matches) ?: return null
+    val seconds = raw.removeSuffix("s").toBigDecimalOrNull()?.stripTrailingZeros()
+    return seconds?.takeIf { it.scale() <= 0 }?.let {
+        runCatching { ZoneOffset.ofTotalSeconds(it.intValueExact()) }.getOrNull()
+    }
+}
+
+internal fun sourceName(point: JSONObject): String {
+    val name = point.opt("dataPointName") as? String
+    val alternate = point.opt("name") as? String
+    return name.orEmpty().ifBlank { alternate.orEmpty() }
 }

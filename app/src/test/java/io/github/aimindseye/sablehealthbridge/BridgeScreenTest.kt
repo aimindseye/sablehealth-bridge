@@ -12,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.github.aimindseye.sablehealthbridge.core.Action
 import io.github.aimindseye.sablehealthbridge.core.Decision
+import io.github.aimindseye.sablehealthbridge.core.OverlayInfo
+import io.github.aimindseye.sablehealthbridge.core.StageType
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,6 +43,8 @@ class BridgeScreenTest {
                         { actions.add("apply") },
                         { actions.add("forget") },
                         { actions.add("about") },
+                        { actions.add("previous") },
+                        { actions.add("next") },
                     ),
                 )
             }
@@ -92,6 +96,50 @@ class BridgeScreenTest {
         compose.onNodeWithTag("google-connect").assertIsNotEnabled()
         compose.onNodeWithTag("health-connect").assertIsNotEnabled()
         capture("busy")
+    }
+
+    @Test
+    fun overlayPreviewExplainsNormalizedAndSourceTotals() {
+        mount()
+        val original = testSleep()
+        val session =
+            original.copy(
+                stages = original.stages.map { it.copy(type = StageType.OUT_OF_BED) },
+                overlayInfo = OverlayInfo(1, 1, original.asleepMinutes(), 47, null, 1),
+            )
+        compose.runOnIdle {
+            screen.value = ScreenState(connected = true, preview = Preview(session, Decision(Action.INSERT)))
+        }
+        val warning = "Review: 1 awakening type(s) inferred from Google collection"
+        compose.onNodeWithText(warning).assertExists()
+        compose.onNodeWithText("Google summary: 47m asleep · —m awake").assertExists()
+        compose.onNodeWithText("Primary stages: ${original.asleepMinutes()}m asleep · Import: 0m").assertExists()
+        compose.onNodeWithTag("apply-sleep").assertIsDisplayed()
+        capture("overlays")
+        val withoutSummary = OverlayInfo(1, 1, original.asleepMinutes(), null, null)
+        val conflictSession = session.copy(overlayInfo = withoutSummary)
+        val conflictPreview = Preview(conflictSession, Decision(Action.CONFLICT))
+        compose.runOnIdle {
+            screen.value = screen.value.copy(preview = conflictPreview)
+        }
+        compose.onNodeWithTag("apply-sleep").assertDoesNotExist()
+        compose.onNodeWithText(warning).assertDoesNotExist()
+    }
+
+    @Test
+    fun diagnosticsAndSessionNavigationAreExplicit() {
+        mount()
+        val report = "Google Health v4 sleep schema (sanitized)"
+        compose.runOnIdle {
+            screen.value = ScreenState(connected = true, sessionCount = 2, heldCount = 1, diagnostics = report)
+        }
+        compose.onNodeWithText("Previous").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("API diagnostics").performClick()
+        compose.onNodeWithText(report).assertExists()
+        compose.onNodeWithText("Hide diagnostics").performClick()
+        compose.onNodeWithText(report).assertDoesNotExist()
+        compose.runOnIdle { check(actions == listOf("previous", "next")) }
     }
 
     @Test

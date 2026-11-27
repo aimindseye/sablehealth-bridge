@@ -5,6 +5,7 @@ import io.github.aimindseye.sablehealthbridge.core.Action
 import io.github.aimindseye.sablehealthbridge.core.BRIDGE_PACKAGE
 import io.github.aimindseye.sablehealthbridge.core.Decision
 import io.github.aimindseye.sablehealthbridge.core.ExistingSleep
+import io.github.aimindseye.sablehealthbridge.core.StageType
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,7 +40,7 @@ class ConnectWriteBoundaryTest {
         }
 
     @Test
-    fun unmatchedStagesInProviderAreNotRepresentedAsDetailedSleep() {
+    fun unspecifiedSleepingInProviderIsPreservedWithoutInventingDetail() {
         val record = toRecord(session, 0)
         val stageType = SleepSessionRecord.STAGE_TYPE_SLEEPING
         val unsupported =
@@ -51,7 +52,9 @@ class ConnectWriteBoundaryTest {
                 metadata = record.metadata,
                 stages = listOf(SleepSessionRecord.Stage(record.startTime, record.endTime, stageType)),
             )
-        check(existingRecord(unsupported).stages == null)
+        val mapped = existingRecord(unsupported)
+        val stage = requireNotNull(mapped.stages).single()
+        check(stage.type == StageType.ASLEEP)
     }
 
     @Test

@@ -37,15 +37,16 @@ class SleepApiTest {
         parseSleep(candidate, now)
     }
 
-    @Test(expected = Hold::class)
-    fun gapsAreRejected() {
+    @Test
+    fun gapsRemainUnclassified() {
         val candidate = fixtureSleepPoint()
         candidate
             .getJSONObject("sleep")
             .getJSONArray("stages")
             .getJSONObject(1)
             .put("startTime", "2025-01-01T23:11:00Z")
-        parseSleep(candidate, now)
+        val session = parseSleep(candidate, now)
+        check(session.asleepMinutes() == 49L && session.stages.size == 2)
     }
 
     @Test(expected = Hold::class)

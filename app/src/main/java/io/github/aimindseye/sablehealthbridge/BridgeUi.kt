@@ -1,17 +1,16 @@
 package io.github.aimindseye.sablehealthbridge
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -22,36 +21,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import io.github.aimindseye.sablehealthbridge.core.Action
-import io.github.aimindseye.sablehealthbridge.core.SleepSession
-import io.github.aimindseye.sablehealthbridge.core.StageType
-import java.time.Duration
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 private const val DARK_PRIMARY_ARGB = 0xFF8BCBF2
 private const val LIGHT_PRIMARY_ARGB = 0xFF17658E
-private const val AWAKE_ARGB = 0xFFD38C9D
-private const val LIGHT_ARGB = 0xFF54A9DB
-private const val DEEP_ARGB = 0xFF7175D2
-private const val REM_ARGB = 0xFFB19BD8
 private val darkPrimary = Color(DARK_PRIMARY_ARGB)
 private val lightPrimary = Color(LIGHT_PRIMARY_ARGB)
-private val stagePalette =
-    listOf(
-        Color(AWAKE_ARGB),
-        Color(LIGHT_ARGB),
-        Color(DEEP_ARGB),
-        Color(REM_ARGB),
-    )
-private const val MINUTES_PER_HOUR = 60
 
 @Composable
 internal fun BridgeTheme(content: @Composable () -> Unit) {
@@ -71,6 +54,9 @@ internal data class ScreenActions(
     val apply: () -> Unit,
     val forget: () -> Unit,
     val about: () -> Unit,
+    val previous: () -> Unit = {},
+    val next: () -> Unit = {},
+    val sync: (() -> Unit)? = null,
 )
 
 @Composable
@@ -85,6 +71,7 @@ internal fun BridgeScreen(
                     Text("Sable Health Bridge", style = MaterialTheme.typography.titleMedium)
                     Text("Sleep only · SB-R1", style = MaterialTheme.typography.labelSmall)
                 }
+                actions.sync?.let { back -> TextButton(onClick = back) { Text("Sync") } }
                 TextButton(onClick = actions.about, modifier = Modifier.heightIn(min = 48.dp)) { Text("About") }
             }
             Column(
@@ -97,7 +84,9 @@ internal fun BridgeScreen(
                     modifier = Modifier.padding(4.dp).testTag("bridge-status"),
                     style = MaterialTheme.typography.bodySmall,
                 )
+                SessionControls(state, actions)
                 state.preview?.let { SleepCard(it) }
+                SchemaDiagnostics(state.diagnostics)
             }
             val item = state.preview
             if (item?.decision?.canWrite == true) {
@@ -115,7 +104,7 @@ internal fun BridgeScreen(
                     enabled = state.connected && !state.busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("preview-sleep"),
                 ) {
-                    Text("Preview latest sleep")
+                    Text("Preview recent sleep")
                 }
             }
         }
@@ -166,44 +155,30 @@ private fun ConnectionCard(
 }
 
 @Composable
-private fun SleepCard(preview: Preview) {
-    val sleep = preview.session
-    val format = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
-    Card(Modifier.fillMaxWidth().testTag("sleep-preview")) {
-        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Latest main sleep · Google wearable", style = MaterialTheme.typography.labelSmall)
-            val hours = sleep.asleepMinutes() / MINUTES_PER_HOUR
-            val minutes = sleep.asleepMinutes() % MINUTES_PER_HOUR
-            Text("${hours}h ${minutes}m asleep", style = MaterialTheme.typography.headlineSmall)
-            Text(
-                "${format.format(sleep.start)} – ${format.format(sleep.end)}",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            StageBar(sleep)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StageType.entries.forEach { stage ->
-                    Column {
-                        Text(
-                            stage.name.lowercase().replaceFirstChar { it.uppercaseChar() },
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                        Text("${sleep.minutes(stage)}m", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-            Text(actionLabel(preview.decision.action), style = MaterialTheme.typography.bodySmall)
+private fun SessionControls(
+    state: ScreenState,
+    actions: ScreenActions,
+) {
+    if (state.sessionCount > 1) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(onClick = actions.previous, enabled = !state.busy) { Text("Previous") }
+            Text("${state.sessionIndex + 1} / ${state.sessionCount}", modifier = Modifier.padding(top = 12.dp))
+            TextButton(onClick = actions.next, enabled = !state.busy) { Text("Next") }
         }
+    }
+    if (state.heldCount > 0) {
+        Text("${state.heldCount} session(s) deferred or conflicting", style = MaterialTheme.typography.bodySmall)
     }
 }
 
 @Composable
-private fun StageBar(session: SleepSession) {
-    Canvas(Modifier.fillMaxWidth().height(12.dp)) {
-        val total = Duration.between(session.start, session.end).toMillis().toFloat()
-        session.stages.forEach { stage ->
-            val start = Duration.between(session.start, stage.start).toMillis() / total * size.width
-            val width = Duration.between(stage.start, stage.end).toMillis() / total * size.width
-            drawRect(stagePalette[stage.type.ordinal], Offset(start, 0f), Size(width, size.height))
+private fun SchemaDiagnostics(report: String) {
+    var expanded by remember { mutableStateOf(false) }
+    if (report.isNotBlank()) {
+        TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide diagnostics" else "API diagnostics") }
+        if (expanded) {
+            Text("Select and copy this sanitized schema report.", style = MaterialTheme.typography.labelSmall)
+            SelectionContainer { Text(report, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
@@ -235,13 +210,14 @@ internal fun PrivacyScreen(back: () -> Unit) {
                     "The Bridge does not store tokens or sleep records in app files. No analytics or separate backend.",
             )
             Text(
-                "Sleep read access detects overlaps. Sleep write access imports the explicitly reviewed record. " +
-                    "Only the Bridge's own matching copy can be removed; other apps' records are never altered.",
+                "Sleep read access detects overlaps. Manual import requires review. Automatic sync is opt-in and " +
+                    "inserts only new completed sleep. Other apps' records are never altered.",
             )
             Text(
-                "Google Health may export a duplicate later. Preview again to detect it. Clear session removes " +
-                    "the app's in-memory access token, not the Google account grant. " +
-                    "Revoke access in Google account settings.",
+                "Automatic sync retains a salted account binding, opaque import identities, and aggregate status " +
+                    "locally. No tokens or raw sleep records are persisted. " +
+                    "Stop sync to prevent new automatic writes. " +
+                    "An already submitted write may complete. Revoke access in Google account settings.",
             )
             TextButton(onClick = back, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         }

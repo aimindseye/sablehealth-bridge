@@ -31,24 +31,31 @@ class SleepApiEdgeTest {
     }
 
     @Test
-    fun rejectedIdentityAndNonMainAndOverlays() {
+    fun rejectsMissingIdentityAndMalformedOverlayButAcceptsNonMain() {
         val missing = fixtureSleepPoint().apply { remove("dataPointName") }
         val nap = fixtureSleepPoint().apply { getJSONObject("sleep").getJSONObject("metadata").put("mainSleep", false) }
         val overlay = fixtureSleepPoint()
         overlay.getJSONObject("sleep").put("outOfBedSegments", JSONArray().put(JSONObject()))
-        for (candidate in listOf(missing, nap, overlay)) {
+        check(parseSleep(nap, now).sourceInfo?.mainSleep == false)
+        for (candidate in listOf(missing, overlay)) {
             assertTrue(runCatching { parseSleep(candidate, now) }.exceptionOrNull() is Hold)
         }
     }
 
     @Test
-    fun duplicateMainRecordsAreNotSilentlySelected() {
-        val error =
-            runCatching {
-                val points = JSONArray().put(fixtureSleepPoint()).put(fixtureSleepPoint())
-                readLatest(now, ZoneOffset.UTC) { JSONObject().put("dataPoints", points) }
-            }.exceptionOrNull()
-        assertTrue(error is Hold)
+    fun identicalDuplicateMainRecordsAreDeduplicated() {
+        val points = JSONArray().put(fixtureSleepPoint()).put(fixtureSleepPoint())
+        val batch = readSleepBatch(now, ZoneOffset.UTC) { JSONObject().put("dataPoints", points) }
+        check(batch.sessions.size == 1 && batch.heldCount == 0)
+    }
+
+    @Test
+    fun automaticInitialWindowAndRecurringWindowDiffer() {
+        val date = Instant.parse("2025-01-10T12:00:00Z")
+        val points = JSONArray().put(fixtureSleepPoint())
+        val page = JSONObject().put("dataPoints", points)
+        check(readSyncBatch(date, ZoneOffset.UTC, true) { page }.sessions.size == 1)
+        check(readSyncBatch(date, ZoneOffset.UTC, false) { page }.sessions.isEmpty())
     }
 
     @Test

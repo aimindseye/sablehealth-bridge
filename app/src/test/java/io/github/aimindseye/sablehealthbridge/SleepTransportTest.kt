@@ -21,6 +21,24 @@ class SleepTransportTest {
     private val now = Instant.parse("2025-01-02T12:00:00Z")
 
     @Test
+    fun identityUsesOnlyFixedEndpointAndClosesResources() {
+        val connection = FixtureConnection(200, "{\"healthUserId\":\"synthetic-user\"}".toByteArray())
+        val result =
+            fetchIdentity("fixture-token") { requested ->
+                check(requested == "https://health.googleapis.com/v4/users/me/identity")
+                connection
+            }
+        check(result.getString("healthUserId") == "synthetic-user")
+        check(connection.requestMethod == "GET" && !connection.instanceFollowRedirects)
+        check(connection.disconnected && connection.streamClosed)
+        val refused = FixtureConnection(403, byteArrayOf())
+        val error = runCatching { fetchIdentity("fixture-token") { refused } }.exceptionOrNull()
+        check(error is Hold && error.label == "API HTTP 403: check Google account access")
+        check(!error.retryable)
+        check(refused.disconnected && !refused.streamOpened)
+    }
+
+    @Test
     fun authorizedGetAndResourceCleanup() {
         val connection = FixtureConnection(200, "{\"dataPoints\":[]}".toByteArray())
         val json =
@@ -50,7 +68,7 @@ class SleepTransportTest {
         for (status in listOf(302, 401, 403, 429, 503)) {
             val connection = FixtureConnection(status, byteArrayOf())
             val error = runCatching { fetchPage(url, "fixture-token") { connection } }.exceptionOrNull()
-            check(error is Hold && error.label == "API HTTP $status")
+            check(error is Hold && error.label.startsWith("API HTTP $status"))
             check(connection.disconnected && !connection.streamOpened)
         }
     }
