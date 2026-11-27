@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# SAI-1 remote path; original local signing path below remains unchanged.
+if [[ "${1:-}" == --remote ]]; then
+    shift
+    client="$HOME/.local/share/sai1/final/final.py"
+    [[ -f "$client" && ! -L "$client" ]] || { echo HOLD_SAI1_FINAL_CLIENT_NOT_INSTALLED; exit 2; }
+    exec python3 -I "$client" release "$@"
+fi
 set -euo pipefail
 umask 077
 cd "$(dirname "$0")/.."
