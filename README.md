@@ -1,82 +1,29 @@
-# Sable Health Bridge — SB-R2A
+# Sable Health Bridge — R11.4
 
-**Implementation candidate, not qualified for distribution.** This is a native Android sleep-only bridge with explicit manual imports and an
-opt-in, read-only background qualification probe. See the delivery README for qualification.
+**Implementation accepted for owner integration; unattended-device acceptance pending. Not qualified for public distribution.** Native Android sleep-only Bridge for Google Health / Fitbit Air to Health Connect. Sable Health remains a read-only consumer. See [R11.4 implementation acceptance](docs/R114_IMPLEMENTATION_ACCEPTANCE_2026-11-26.md) and [open device follow-up #10](https://github.com/aimindseye/sablehealth-bridge/issues/10).
 
 ## Behavior
 
-Google Identity Services requests the single Google Health sleep read-only scope.
-The application keeps the returned access token in memory only; Google Play
-services manages its own authorization state. No desktop client JSON, client
-secret, server auth code or refresh token is used by this app. Clear session
-forgets the local token, not Google's grant. Choose the same Google account as
-Fitbit Air. Authorize the installed app in the same Cloud project as SB-0.
+Google Identity Services requests the single Google Health sleep read-only scope. Access tokens remain in memory; Google Play services manages its own authorization state. No desktop client JSON, client secret, server auth code or refresh token is used by this app. Clear session forgets the manual in-memory token, not Google's grant or automatic-sync consent. Use the same Google account as Fitbit Air and the configured Cloud project.
 
-Preview uses the Google-wearables reconciliation endpoint and selects the latest
-main session in a three-local-day window. Review the date. Only finalized,
-fully partitioned Awake/Light/Deep/REM sessions are eligible. Unrecognized stages,
-short awakening overlays, out-of-bed intervals, ambiguous overlapping sessions,
-missing record identities and incomplete results block import. Only a single
-main session can be imported per action. No nap/backfill or automatic writes in SB-R2A.
+Manual preview reads the Google-wearables source family over a recent 14-calendar-day window, with per-session navigation and stage/overlay compatibility. Source validation, exact reconciliation, and fresh source and Health Connect review precede a manual write. Uncertain or overlapping records may be held. Identical existing records are skipped; explicitly reviewed Bridge-owned updates or duplicate removal remain subject to the manual policy. No foreign records are altered or deleted. Health Connect stage data is not invented.
 
-Before an explicit write the app rereads the API and the overlapping Health
-Connect records; a changed session or decision requires another preview.
-Identical foreign records are skipped. An identical Bridge record is skipped;
-a stage-only correction can replace the Bridge's own same-bounds record with
-an increased client version. A shifted or conflicting session is held. If an
-identical external record arrives later, a new preview can offer removal of the
-Bridge's matching copy only. No foreign records are ever modified or deleted.
-There is no cross-app transaction or lock: another writer can race this check.
-Always review actual Health Connect records after sync. Do not retry an ambiguous
-write blindly. Foreign records with different boundaries or stage segmentation
-are conservatively held rather than merged. This is deliberately not a general
-sleep reconciler. M1-D1 must reconcile cross-source duplicates independently.
+## Automatic sleep synchronization
 
-The optional background probe uses WorkManager, requires background sleep-read
-permission, and does not write or delete sleep records. WorkManager persists a
-random salt and pseudonymous account-binding hash plus bounded result metadata;
-no OAuth token or raw sleep payload is persisted by the probe. No persistent app
-health cache, telemetry, Bluetooth or additional health-metric scopes. Network access is for Google authorization and API
-reads. The app can display the sleep record locally and writes only after the
-owner selects the displayed action. All stored Health Connect times are instants
-with supplied UTC offsets; no unit conversion in the Bridge. Theme follows system
-and screen adapts to available space; explicit appearance and device-profile
-controls, multi-step setup wizard, and populated production screenshot coverage
-are outstanding, not claimed as implemented.
+Default OFF. Explicit enable requires sleep read/write and background read access, Google authorization and a salted account binding. The compact dashboard offers 15/30/60-minute intervals (default 30; choose before enabling), Sync now, Stop sync, aggregate recent run history and a manual preview/import fallback. WorkManager uses unique network-constrained periodic and immediate jobs; foreground opening can trigger a sync. First completed run reconciles 14 calendar days; recurring runs reconcile seven days. Timing is best effort and may be delayed by Android. Force-stop prevents normal unattended operation until reopened.
 
-## Qualification
+Automatic writes are insert-only for eligible completed source records, using fresh Health Connect reconciliation inside a shared manual/automatic write lock. Exact matches are skipped and journaled. A private durable journal reserves an opaque identity before submission, records confirmation after readback, and holds unresolved attempts, missing previously observed records, conflicts and updates rather than blindly retrying or recreating them. No automatic updates or deletions. Another app may write concurrently; there is no cross-app atomic transaction. Stop or permission loss blocks subsequent writes once observed; a write already submitted can finish. Account changes or authorization requiring interaction pause automatic sync. No interactive authorization is launched from the worker.
 
-See the outer package README. Source checks and core policy cases can execute
-without Android. Android compile, detekt, ktlint, lint, real coverage, startup
-captures, release minification, Google authorization, actual write/read-back and
-CI are mandatory owner-side checks, not claimed to have passed here.
+Local private storage contains salted account binding, consent generation, opaque import identities and bounded aggregate run status, not OAuth tokens, raw sleep payloads or account names. No additional backend, telemetry, Bluetooth or health scopes. The independent 2-minute/75-minute read-only background probe remains available and never writes. See [R11.4 design and qualification history](docs/R114_AUTOMATIC_SLEEP_SYNC_2026-11-26.md).
+
+## Qualification and release status
+
+Exact tested implementation: `76d5d7dee09f6f7f75d29b238154546c0a2ddd33` (PR #9). All six production CI checks, local quality and dependency/security qualification, and signed release verification passed. Actual incremental core/app coverage 100%/84.72%, cumulative 99.58%/85.76%, meeting the >=80% per-module requirement. Owner reported 9 of 15 device checks passed; new unattended import, Sable Health display of that import, reboot/network recovery, stop, permission revocation and preservation of existing records remain pending in issue #10. No full background-write acceptance or public release is claimed. Do not uninstall or clear app data for routine updates. Stop sync and investigate any safety failure.
 
 ## R11 toolchain and security qualification
 
-AGP 9.2.1, Gradle 9.4.1 (distribution SHA-256 pinned), Kotlin 2.3.21,
-compile SDK 37.0, target SDK 36, min SDK 30, JDK 21. The existing audited
-Gradle 8.13 wrapper launcher/JAR is retained only as the bootstrap for the
-pinned distribution; do not replace it with an unverified binary. Android
-uses AGP built-in Kotlin; the core JVM module retains its Kotlin JVM plugin.
-Health Connect 1.2.0-alpha06 includes upstream signature validation and legacy
-intent fixes. It is a prerelease under qualification, not a distribution
-approval. See https://developer.android.com/jetpack/androidx/releases/health-connect.
-
-All existing quality and security gates remain mandatory. Reconcile the actual
-resolved dependency graph, notices, exported components, Lint and MobSF evidence
-and complete real device testing before signing or merging. The historical
-third-party inventory is not evidence for the upgraded dependency graph.
-
-AGP 9.2.1 is selected because AGP 9.1.1 reported three false-positive
-WrongConstant errors in the background availability checks (Google issue
-478779827, fixed in AGP 9.2.0). The patch release also addresses an R8 class
-loading defect (issue 504996348). No Lint suppressions, baselines, source
-changes or quality-gate exceptions are introduced for these errors.
+AGP 9.2.1, Gradle 9.4.1 (distribution SHA-256 pinned), Kotlin JVM/Compose plugins 2.4.21, compile SDK 37.0, target SDK 36, min SDK 30, JDK 21. Android uses AGP built-in Kotlin. The existing audited Gradle 8.13 wrapper launcher/JAR is retained as bootstrap for the pinned distribution. WorkManager 2.11.2 and Health Connect 1.2.0-alpha06 are unchanged. The latter remains a prerelease with owner-accepted personal testing risk, not distribution approval. The exact dependency inventory and fresh OSV evidence passed; existing release-license gaps and source-attribution policy review remain open. All existing quality and security gates remain mandatory for subsequent code changes. See [R11 historical qualification](docs/security/R11_FINAL_QUALIFICATION_2026-11-26.md) and [third-party notices](docs/third-party/README.md).
 
 ## Research and acknowledgements
 
 Thanks to the [Google Health API](https://developers.google.com/health/) and [Android Health Connect](https://developer.android.com/health-and-fitness/health-connect) documentation, [Sable Health](https://github.com/aimindseye/sablehealth), [FitMesh Sync](https://www.fitmesh.fit/en/integrations), [Open Health Sync](https://github.com/soma-intelligence/open-health-sync), [Open Wearables](https://github.com/the-momentum/open-wearables), [fitbit-air-mac (Raphael Hauser)](https://github.com/raphaelhauser/fitbit-air-mac), [fitbit-air (Thore Koritzius)](https://github.com/ThoreKoritzius/fitbit-air) and [Golden Gate](https://github.com/Google-Health-API/golden-gate) for platform documentation and relevant research/comparisons. These links acknowledge research, not code inclusion, affiliation, endorsement or supported direct BLE integration. See [Bridge research and evidence](docs/research/BRIDGE_RESEARCH_2026-11-26.md) and [Sable Health research archive](https://github.com/aimindseye/sablehealth/tree/main/docs/sable-health). Third-party dependency notices remain separate in [docs/third-party](docs/third-party/README.md).
-
-## R11 final qualification
-
-See [R11 final qualification checklist](docs/security/R11_FINAL_QUALIFICATION_2026-11-26.md). Candidate evidence is not authorization for distribution or automated writes.

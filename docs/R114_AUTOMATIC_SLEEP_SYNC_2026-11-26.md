@@ -1,4 +1,6 @@
-# R11.4 automatic sleep sync — candidate, not a qualified release
+# R11.4 automatic sleep sync — implementation and qualification history
+
+**Status update (2026-11-26):** the implementation is accepted for owner merge; unattended operation and safety acceptance remain open. See [the current acceptance record](R114_IMPLEMENTATION_ACCEPTANCE_2026-11-26.md) and [issue #10](https://github.com/aimindseye/sablehealth-bridge/issues/10). The following sections preserve historical candidate-stage instructions and CI corrections; they are not the current release decision.
 
 ## Scope and deliberate safety restriction
 
